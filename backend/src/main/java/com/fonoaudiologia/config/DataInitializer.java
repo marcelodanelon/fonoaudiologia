@@ -83,8 +83,6 @@ public class DataInitializer implements CommandLineRunner {
                 "Nome da clinica exibido no sistema"));
         configRepository.save(new SystemConfig("reception_poll_interval", "10000",
                 "Intervalo em milissegundos para verificar novos pacientes na recepcao"));
-
-        seedTestData(admin, recepcionista, fono);
     }
 
     private void seedTestData(User admin, User recepcionista, User fono) {
