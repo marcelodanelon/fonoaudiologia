@@ -6,7 +6,11 @@ services:
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
-      - key: DATABASE_URL
+      - key: DB_HOST
+        value: ep-dawn-bread-aydb0mvz-pooler.c-5.us-east-2.aws.neon.tech
+      - key: DB_USER
+        value: neondb_owner
+      - key: DB_PASS
         sync: false
       - key: JWT_SECRET
         generateValue: true

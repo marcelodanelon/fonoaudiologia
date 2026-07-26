@@ -65,15 +65,6 @@ export default function Login() {
             ) : 'Entrar'}
           </button>
         </form>
-
-        <div style={{ marginTop: 28, padding: '16px 18px', background: 'var(--bg)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>Credenciais de teste</div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.8 }}>
-            <div><strong style={{ color: 'var(--text-secondary)' }}>Admin:</strong> admin / admin123</div>
-            <div><strong style={{ color: 'var(--text-secondary)' }}>Recepcionista:</strong> recepcionista / recep123</div>
-            <div><strong style={{ color: 'var(--text-secondary)' }}>Fonoaudiologo:</strong> fonoaudiologo / fono123</div>
-          </div>
-        </div>
       </div>
     </div>
   );

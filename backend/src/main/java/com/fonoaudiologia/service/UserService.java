@@ -90,6 +90,7 @@ public class UserService {
         if (request.getCpf() != null && userRepository.existsByCpf(request.getCpf())) {
             throw new RuntimeException("CPF ja cadastrado");
         }
+        validatePasswordStrength(request.getPassword());
 
         Role role = roleRepository.findById(request.getRoleId())
                 .orElseThrow(() -> new RuntimeException("Perfil nao encontrado"));
@@ -124,6 +125,7 @@ public class UserService {
         }
 
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
+            validatePasswordStrength(request.getPassword());
             user.setPassword(passwordEncoder.encode(request.getPassword()));
         }
 
@@ -139,6 +141,21 @@ public class UserService {
 
     public long countActive() {
         return userRepository.findAll().stream().filter(User::isActive).count();
+    }
+
+    private void validatePasswordStrength(String password) {
+        if (password == null || password.length() < 8) {
+            throw new RuntimeException("A senha deve ter no minimo 8 caracteres");
+        }
+        if (!password.matches(".*[A-Z].*")) {
+            throw new RuntimeException("A senha deve conter pelo menos uma letra maiuscula");
+        }
+        if (!password.matches(".*[a-z].*")) {
+            throw new RuntimeException("A senha deve conter pelo menos uma letra minuscula");
+        }
+        if (!password.matches(".*\\d.*")) {
+            throw new RuntimeException("A senha deve conter pelo menos um numero");
+        }
     }
 
     private UserResponse toResponse(User user) {

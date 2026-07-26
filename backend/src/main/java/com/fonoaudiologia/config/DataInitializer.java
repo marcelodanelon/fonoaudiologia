@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.UUID;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
@@ -48,19 +49,31 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        if (userRepository.count() > 0) {
+            return;
+        }
+
         Role adminRole = roleRepository.save(Role.admin());
         Role recepRole = roleRepository.save(Role.recepcionista());
         Role fonoRole = roleRepository.save(Role.fonoaudiologo());
 
-        User admin = new User("admin", passwordEncoder.encode("admin123"),
+        String adminPass = System.getenv("ADMIN_PASSWORD");
+        String recepPass = System.getenv("RECEPCIONISTA_PASSWORD");
+        String fonoPass = System.getenv("FONOAUDIOLOGO_PASSWORD");
+
+        if (adminPass == null || adminPass.isEmpty()) adminPass = UUID.randomUUID().toString();
+        if (recepPass == null || recepPass.isEmpty()) recepPass = UUID.randomUUID().toString();
+        if (fonoPass == null || fonoPass.isEmpty()) fonoPass = UUID.randomUUID().toString();
+
+        User admin = new User("admin", passwordEncoder.encode(adminPass),
                 "Administrador do Sistema", "admin@fono.com", "000.000.000-00", "(11)99999-0000", adminRole);
         userRepository.save(admin);
 
-        User recepcionista = new User("recepcionista", passwordEncoder.encode("recep123"),
+        User recepcionista = new User("recepcionista", passwordEncoder.encode(recepPass),
                 "Maria Recepcao", "recep@fono.com", "111.111.111-11", "(11)98888-1111", recepRole);
         userRepository.save(recepcionista);
 
-        User fono = new User("fonoaudiologo", passwordEncoder.encode("fono123"),
+        User fono = new User("fonoaudiologo", passwordEncoder.encode(fonoPass),
                 "Dr. Joao Fono", "fono@fono.com", "222.222.222-22", "(11)97777-2222", fonoRole);
         userRepository.save(fono);
 

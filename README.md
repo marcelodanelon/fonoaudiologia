@@ -37,14 +37,6 @@ controle de acesso por perfis, registro de auditoria e logout automatico por ina
 7. **Configuracoes** - Timeout de sessao e dados da clinica
 8. **Auditoria** - Registro completo de todas as acoes
 
-## Credenciais de Teste
-
-| Usuario | Senha | Perfil |
-|---------|-------|--------|
-| admin | admin123 | Administrador |
-| recepcionista | recep123 | Recepcionista |
-| fonoaudiologo | fono123 | Fonoaudiologo |
-
 ## Como Executar
 
 ### Backend (porta 8080)
