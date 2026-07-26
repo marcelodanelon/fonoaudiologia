@@ -36,18 +36,18 @@ public class SecurityConfig {
             .csrf().disable()
             .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             .and()
-            .headers()
-                .frameOptions().deny().and()
-                .contentTypeOptions().and()
-                .httpStrictTransportSecurity()
-                    .includeSubDomains(true)
-                    .maxAgeInSeconds(31536000)
-            .and()
             .authorizeRequests()
                 .antMatchers("/api/auth/**").permitAll()
                 .anyRequest().authenticated()
             .and()
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        http.headers()
+            .frameOptions().deny()
+            .and()
+            .httpStrictTransportSecurity()
+                .includeSubDomains(true)
+                .maxAgeInSeconds(31536000);
 
         return http.build();
     }
