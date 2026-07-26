@@ -42,12 +42,7 @@ public class SecurityConfig {
             .and()
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-        http.headers()
-            .frameOptions().deny()
-            .and()
-            .httpStrictTransportSecurity()
-                .includeSubDomains(true)
-                .maxAgeInSeconds(31536000);
+        http.headers().frameOptions().deny();
 
         return http.build();
     }
