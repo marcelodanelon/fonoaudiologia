@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: fonoaudiologia
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+    plan: free
