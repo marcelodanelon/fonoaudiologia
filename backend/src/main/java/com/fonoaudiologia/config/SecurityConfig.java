@@ -43,8 +43,6 @@ public class SecurityConfig {
             .and()
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-        http.headers().frameOptions().deny();
-
         return http.build();
     }
 
