@@ -6,6 +6,7 @@ import { useConfirm } from '../context/ConfirmContext';
 import Pagination from '../components/Pagination';
 import AudiogramChart from '../components/AudiogramChart';
 import PrintModal from '../components/PrintModal';
+import { statusLabel } from '../utils/statusLabels';
 
 const PAGE_SIZE = 10;
 const FREQUENCIES = [250, 500, 1000, 2000, 3000, 4000, 6000, 8000];
@@ -277,8 +278,7 @@ export default function Consultation() {
 
   const statusBadge = (s) => {
     const map = { AGENDADA: 'badge-warning', EM_ANDAMENTO: 'badge-info', CONCLUIDA: 'badge-purple', CANCELADA: 'badge-danger' };
-    const labels = { CONCLUIDA: 'ATENDIDO', CANCELADA: 'CANCELADA', EM_ANDAMENTO: 'EM ANDAMENTO', AGENDADA: 'AGENDADA' };
-    return <span className={`badge ${map[s] || 'badge-secondary'}`}>{labels[s] || s?.replace('_', ' ')}</span>;
+    return <span className={`badge ${map[s] || 'badge-secondary'}`}>{statusLabel(s)}</span>;
   };
 
   const filteredConsultations = consultations.filter(c => {
@@ -584,7 +584,7 @@ export default function Consultation() {
               </div>
             ) : readyPatients.map(r => {
               const isAppt = r.type === 'APPOINTMENT';
-              const statusLabel = isAppt ? (r.status || 'AGENDADO') : 'RECEPCIONADO';
+              const statusText = isAppt ? (r.status || 'AGENDADO') : 'RECEPCIONADO';
               const borderColor = isAppt
                 ? (r.status === 'RECEPCIONADO' ? 'var(--teal, #0d9488)' : 'var(--primary)')
                 : 'var(--teal, #0d9488)';
@@ -594,7 +594,7 @@ export default function Consultation() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <div className="ready-name">{r.patient?.name}</div>
                       <span className={`badge ${isAppt ? (r.status === 'RECEPCIONADO' ? 'badge-success' : 'badge-info') : 'badge-teal'}`} style={{ fontSize: 10, padding: '1px 7px', whiteSpace: 'nowrap' }}>
-                        {statusLabel.replace('_', ' ')}
+                        {statusLabel(statusText)}
                       </span>
                     </div>
                     <div className="ready-detail">

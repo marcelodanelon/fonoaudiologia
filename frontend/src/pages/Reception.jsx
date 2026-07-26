@@ -3,6 +3,7 @@ import api from '../api/axios';
 import Pagination from '../components/Pagination';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
+import { statusLabel } from '../utils/statusLabels';
 
 const PAGE_SIZE = 12;
 
@@ -178,7 +179,7 @@ export default function Reception() {
                       <span style={{ fontWeight: 700, color: 'var(--primary)', minWidth: 45 }}>{a.time}</span>
                       <span style={{ fontWeight: 600 }}>{a.patient?.name}</span>
                       <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>- {a.professional?.name}</span>
-                      <span className={`badge ${a.status === 'RECEPCIONADO' ? 'badge-success' : a.status === 'ATENDIDO' ? 'badge-purple' : 'badge-info'}`} style={{ fontSize: 10, padding: '1px 6px' }}>{a.status}</span>
+                      <span className={`badge ${a.status === 'RECEPCIONADO' ? 'badge-success' : a.status === 'ATENDIDO' ? 'badge-purple' : 'badge-info'}`} style={{ fontSize: 10, padding: '1px 6px' }}>{statusLabel(a.status)}</span>
                       <span className="badge badge-secondary" style={{ fontSize: 10, padding: '1px 6px' }}>{a.type}</span>
                       <button className="btn btn-primary btn-sm" style={{ marginLeft: 'auto', padding: '3px 10px', fontSize: 11 }}
                         onClick={() => handleCheckinFromAppointment(a)}>Check-in</button>
@@ -224,7 +225,7 @@ export default function Reception() {
                 <tbody>
                   {paginatedRecords.map(r => {
                     const statusMap = { PENDENTE: 'badge-info', ATENDIDO: 'badge-purple', CANCELADO: 'badge-danger' };
-                    const statusLabel = r.status || 'PENDENTE';
+                    const statusKey = r.status || 'PENDENTE';
                     const contactLabel = { AGENDAMENTO: 'Agendamento', TELEFONE: 'Telefone', PORTA: 'Demanda' };
                     const contactBadge = { AGENDAMENTO: 'badge-purple', TELEFONE: 'badge-info', PORTA: 'badge-teal' };
                     return (
@@ -234,7 +235,7 @@ export default function Reception() {
                           {typeLabel(r.type)}</span></td>
                         <td><span className={`badge ${contactBadge[r.contactType] || 'badge-teal'}`} style={{ fontSize: 10, padding: '1px 6px' }}>{contactLabel[r.contactType] || r.contactType}</span></td>
                         <td>{r.patient?.name || 'N/A'}</td>
-                        <td><span className={`badge ${statusMap[statusLabel] || 'badge-info'}`} style={{ fontSize: 10, padding: '1px 6px' }}>{statusLabel}</span></td>
+                        <td><span className={`badge ${statusMap[statusKey] || 'badge-info'}`} style={{ fontSize: 10, padding: '1px 6px' }}>{statusLabel(statusKey)}</span></td>
                         <td style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.notes}</td>
                       </tr>
                     );

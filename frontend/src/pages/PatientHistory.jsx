@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
+import { statusLabel } from '../utils/statusLabels';
 
 export default function PatientHistory() {
   const [patients, setPatients] = useState([]);
@@ -178,7 +179,7 @@ export default function PatientHistory() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                           <strong>{c.type}</strong>
                           <span className={`badge ${c.status === 'CONCLUIDA' ? 'badge-success' : c.status === 'CANCELADA' ? 'badge-danger' : 'badge-warning'}`}>
-                            {c.status?.replace('_', ' ')}
+                            {statusLabel(c.status)}
                           </span>
                         </div>
                         {c.chiefComplaint && <p><strong>Queixa:</strong> {c.chiefComplaint}</p>}

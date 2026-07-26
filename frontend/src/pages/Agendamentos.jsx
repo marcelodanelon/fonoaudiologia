@@ -3,6 +3,7 @@ import api from '../api/axios';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import Pagination from '../components/Pagination';
+import { statusLabel } from '../utils/statusLabels';
 
 const PAGE_SIZE = 12;
 
@@ -135,7 +136,7 @@ export default function Agendamentos() {
 
   const statusBadge = (s) => {
     const map = { AGENDADO: 'badge-info', RECEPCIONADO: 'badge-success', ATENDIDO: 'badge-purple', CANCELADO: 'badge-danger' };
-    return <span className={`badge ${map[s] || 'badge-secondary'}`}>{s}</span>;
+    return <span className={`badge ${map[s] || 'badge-secondary'}`}>{statusLabel(s)}</span>;
   };
 
   const selectedSlot = form.scheduleSlotId ? availableSlots.find(s => s.id === Number(form.scheduleSlotId)) : null;

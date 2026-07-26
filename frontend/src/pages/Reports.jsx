@@ -3,6 +3,7 @@ import api from '../api/axios';
 import { useToast } from '../context/ToastContext';
 import PrintModal from '../components/PrintModal';
 import Pagination from '../components/Pagination';
+import { statusLabel } from '../utils/statusLabels';
 
 const PAGE_SIZE = 12;
 
@@ -120,11 +121,11 @@ function ConsultationsReport({ onPrint, onSetPrintHtml }) {
 
   const statusBadge = (s) => {
     const map = { AGENDADA: 'badge-warning', EM_ANDAMENTO: 'badge-info', CONCLUIDA: 'badge-success', CANCELADA: 'badge-danger' };
-    return <span className={`badge ${map[s] || 'badge-secondary'}`}>{s?.replace('_', ' ')}</span>;
+    return <span className={`badge ${map[s] || 'badge-secondary'}`}>{statusLabel(s)}</span>;
   };
 
   const print = () => {
-    const rows = filtered.map(c => `<tr><td>${new Date(c.createdAt).toLocaleString('pt-BR')}</td><td>${c.patient?.name||''}</td><td>${c.professional?.name||''}</td><td>${c.type||''}</td><td>${(c.status||'').replace('_',' ')}</td><td>${c.receptionRecordId?'Recepcao':'Direto'}</td></tr>`).join('');
+    const rows = filtered.map(c => `<tr><td>${new Date(c.createdAt).toLocaleString('pt-BR')}</td><td>${c.patient?.name||''}</td><td>${c.professional?.name||''}</td><td>${c.type||''}</td><td>${statusLabel(c.status)}</td><td>${c.receptionRecordId?'Recepcao':'Direto'}</td></tr>`).join('');
     onSetPrintHtml(openPrintWindow('Relatorio de Atendimentos',
       `<table><thead><tr><th>Data</th><th>Paciente</th><th>Profissional</th><th>Tipo</th><th>Status</th><th>Origem</th></tr></thead><tbody>${rows}</tbody></table>`,
       new Date().toLocaleDateString('pt-BR'), filtered.length));
@@ -201,11 +202,11 @@ function ReceptionsReport({ onPrint, onSetPrintHtml }) {
 
   const statusBadge = (s) => {
     const map = { CHECKIN: 'badge-success', CANCELADO: 'badge-danger' };
-    return <span className={`badge ${map[s] || 'badge-secondary'}`}>{s}</span>;
+    return <span className={`badge ${map[s] || 'badge-secondary'}`}>{statusLabel(s)}</span>;
   };
 
   const print = () => {
-    const rows = filtered.map(r => `<tr><td>${new Date(r.createdAt).toLocaleString('pt-BR')}</td><td>${r.patient?.name||''}</td><td>${r.patient?.cpf||'-'}</td><td>${r.status||''}</td><td>${r.observations||'-'}</td></tr>`).join('');
+    const rows = filtered.map(r => `<tr><td>${new Date(r.createdAt).toLocaleString('pt-BR')}</td><td>${r.patient?.name||''}</td><td>${r.patient?.cpf||'-'}</td><td>${statusLabel(r.status)}</td><td>${r.observations||'-'}</td></tr>`).join('');
     onSetPrintHtml(openPrintWindow('Relatorio de Recepcoes',
       `<table><thead><tr><th>Data Check-in</th><th>Paciente</th><th>CPF</th><th>Status</th><th>Observacoes</th></tr></thead><tbody>${rows}</tbody></table>`,
       new Date().toLocaleDateString('pt-BR'), filtered.length));
