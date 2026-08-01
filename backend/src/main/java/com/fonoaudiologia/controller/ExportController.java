@@ -26,7 +26,7 @@ public class ExportController {
     @GetMapping("/patients/csv")
     public ResponseEntity<String> exportPatientsCsv() {
         StringBuilder csv = new StringBuilder();
-        csv.append("ID,Nome,CPF,Telefone,Email,Data Nascimento,Criado em\n");
+        csv.append("ID,Nome,CPF,Telefone,E-mail,Data Nascimento,Criado em\n");
         for (Patient p : patientRepository.findAll()) {
             csv.append(String.format("%d,\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n",
                     p.getId(), p.getName(), p.getCpf(), p.getPhone(),

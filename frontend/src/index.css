@@ -723,13 +723,17 @@ tbody tr:last-child td {
   background: white;
   border-radius: var(--radius-xl);
   width: 100%;
-  max-width: 720px;
+  max-width: 800px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
   animation: slideUp 0.2s ease;
+}
+
+.modal.modal-lg {
+  max-width: 980px;
 }
 
 @keyframes slideUp {
@@ -775,7 +779,9 @@ tbody tr:last-child td {
 .modal-body {
   padding: 28px;
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: auto;
 }
 
 .modal-footer {
@@ -831,6 +837,7 @@ tbody tr:last-child td {
   background: var(--bg);
   padding: 4px;
   border-radius: var(--radius);
+  flex-shrink: 0;
 }
 
 .tab {
@@ -1365,20 +1372,20 @@ input[type="checkbox"] {
 }
 
 /* ===== CONFIRM MODAL ===== */
-.modal-overlay {
+.confirm-overlay {
   position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4);
   display: flex; align-items: center; justify-content: center;
   z-index: 9998; animation: fadeIn 0.15s ease;
 }
-.modal {
+.confirm-modal {
   background: white; border-radius: var(--radius-lg); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
   width: 100%; max-width: 420px; overflow: hidden;
 }
-.modal-header { padding: 20px 24px 0; }
-.modal-header h3 { font-size: 16px; font-weight: 700; margin: 0; }
-.modal-body { padding: 12px 24px 20px; }
-.modal-body p { margin: 0; color: var(--text-secondary); font-size: 14px; line-height: 1.5; }
-.modal-footer { padding: 16px 24px; display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid var(--border); }
+.confirm-header { padding: 20px 24px 0; }
+.confirm-header h3 { font-size: 16px; font-weight: 700; margin: 0; }
+.confirm-body { padding: 12px 24px 20px; }
+.confirm-body p { margin: 0; color: var(--text-secondary); font-size: 14px; line-height: 1.5; }
+.confirm-footer { padding: 16px 24px; display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid var(--border); }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 /* ===== LOADING ===== */
@@ -1421,6 +1428,30 @@ input[type="checkbox"] {
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
 }
 .form-error { font-size: 11px; color: var(--danger); margin-top: 4px; }
+
+/* ===== AUTOCOMPLETE ===== */
+.autocomplete { position: relative; }
+.autocomplete-input-wrap { position: relative; }
+.autocomplete-clear {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  width: 22px; height: 22px; border: none; border-radius: 50%;
+  background: var(--border); color: var(--text); font-size: 14px; line-height: 1;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.autocomplete-clear:hover { background: var(--danger); color: white; }
+.autocomplete-list {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 50;
+  margin-top: 4px; background: white; border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  max-height: 220px; overflow-y: auto;
+}
+.autocomplete-item {
+  padding: 10px 14px; cursor: pointer; font-size: 13px; color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+.autocomplete-item:last-child { border-bottom: none; }
+.autocomplete-item:hover { background: rgba(99, 102, 241, 0.08); color: var(--primary); }
+.autocomplete-empty { padding: 10px 14px; font-size: 13px; color: var(--text-muted); }
 
 /* ===== BADGE COLORS ===== */
 .badge-purple { background: rgba(99, 102, 241, 0.1); color: #6366f1; }

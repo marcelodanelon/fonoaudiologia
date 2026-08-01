@@ -4,10 +4,12 @@ import com.fonoaudiologia.dto.ConsultationRequest;
 import com.fonoaudiologia.entity.Appointment;
 import com.fonoaudiologia.entity.Consultation;
 import com.fonoaudiologia.entity.Patient;
+import com.fonoaudiologia.entity.ServiceUnit;
 import com.fonoaudiologia.entity.User;
 import com.fonoaudiologia.repository.AppointmentRepository;
 import com.fonoaudiologia.repository.ConsultationRepository;
 import com.fonoaudiologia.repository.PatientRepository;
+import com.fonoaudiologia.repository.ServiceUnitRepository;
 import com.fonoaudiologia.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
@@ -20,14 +22,17 @@ public class ConsultationService {
     private final ConsultationRepository consultationRepository;
     private final PatientRepository patientRepository;
     private final UserRepository userRepository;
+    private final ServiceUnitRepository unitRepository;
     private final AppointmentRepository appointmentRepository;
 
     public ConsultationService(ConsultationRepository consultationRepository,
                                PatientRepository patientRepository, UserRepository userRepository,
+                               ServiceUnitRepository unitRepository,
                                AppointmentRepository appointmentRepository) {
         this.consultationRepository = consultationRepository;
         this.patientRepository = patientRepository;
         this.userRepository = userRepository;
+        this.unitRepository = unitRepository;
         this.appointmentRepository = appointmentRepository;
     }
 
@@ -37,7 +42,7 @@ public class ConsultationService {
 
     public Consultation findById(Long id) {
         return consultationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Consulta nao encontrada"));
+                .orElseThrow(() -> new RuntimeException("Consulta não encontrada"));
     }
 
     public List<Consultation> findByPatient(Long patientId) {
@@ -50,9 +55,9 @@ public class ConsultationService {
 
     public Consultation create(ConsultationRequest request, Long operatorId) {
         Patient patient = patientRepository.findById(request.getPatientId())
-                .orElseThrow(() -> new RuntimeException("Paciente nao encontrado"));
+                .orElseThrow(() -> new RuntimeException("Paciente não encontrado"));
         User professional = userRepository.findById(request.getProfessionalId())
-                .orElseThrow(() -> new RuntimeException("Profissional nao encontrado"));
+                .orElseThrow(() -> new RuntimeException("Profissional não encontrado"));
 
         Consultation consultation = new Consultation();
         consultation.setPatient(patient);
@@ -68,9 +73,15 @@ public class ConsultationService {
         consultation.setObservations(request.getObservations());
         consultation.setReceptionRecordId(request.getReceptionRecordId());
 
+        if (request.getUnitId() != null) {
+            ServiceUnit unit = unitRepository.findById(request.getUnitId())
+                    .orElseThrow(() -> new RuntimeException("Unidade de atendimento não encontrada"));
+            consultation.setUnit(unit);
+        }
+
         if (operatorId != null) {
             User operator = userRepository.findById(operatorId)
-                    .orElseThrow(() -> new RuntimeException("Operador nao encontrado"));
+                    .orElseThrow(() -> new RuntimeException("Operador não encontrado"));
             consultation.setOperator(operator);
         }
 
@@ -85,17 +96,22 @@ public class ConsultationService {
 
     public Consultation update(Long id, ConsultationRequest request) {
         Consultation consultation = consultationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Consulta nao encontrada"));
+                .orElseThrow(() -> new RuntimeException("Consulta não encontrada"));
 
         if (request.getPatientId() != null) {
             Patient patient = patientRepository.findById(request.getPatientId())
-                    .orElseThrow(() -> new RuntimeException("Paciente nao encontrado"));
+                    .orElseThrow(() -> new RuntimeException("Paciente não encontrado"));
             consultation.setPatient(patient);
         }
         if (request.getProfessionalId() != null) {
             User professional = userRepository.findById(request.getProfessionalId())
-                    .orElseThrow(() -> new RuntimeException("Profissional nao encontrado"));
+                    .orElseThrow(() -> new RuntimeException("Profissional não encontrado"));
             consultation.setProfessional(professional);
+        }
+        if (request.getUnitId() != null) {
+            ServiceUnit unit = unitRepository.findById(request.getUnitId())
+                    .orElseThrow(() -> new RuntimeException("Unidade de atendimento não encontrada"));
+            consultation.setUnit(unit);
         }
         if (request.getType() != null) consultation.setType(request.getType());
         if (request.getStatus() != null) consultation.setStatus(request.getStatus());

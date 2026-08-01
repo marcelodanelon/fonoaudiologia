@@ -3,9 +3,11 @@ package com.fonoaudiologia.service;
 import com.fonoaudiologia.dto.ScheduleSlotRequest;
 import com.fonoaudiologia.entity.Appointment;
 import com.fonoaudiologia.entity.ScheduleSlot;
+import com.fonoaudiologia.entity.ServiceUnit;
 import com.fonoaudiologia.entity.User;
 import com.fonoaudiologia.repository.AppointmentRepository;
 import com.fonoaudiologia.repository.ScheduleSlotRepository;
+import com.fonoaudiologia.repository.ServiceUnitRepository;
 import com.fonoaudiologia.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
@@ -19,12 +21,15 @@ public class ScheduleSlotService {
 
     private final ScheduleSlotRepository repository;
     private final UserRepository userRepository;
+    private final ServiceUnitRepository unitRepository;
     private final AppointmentRepository appointmentRepository;
 
     public ScheduleSlotService(ScheduleSlotRepository repository, UserRepository userRepository,
+                               ServiceUnitRepository unitRepository,
                                AppointmentRepository appointmentRepository) {
         this.repository = repository;
         this.userRepository = userRepository;
+        this.unitRepository = unitRepository;
         this.appointmentRepository = appointmentRepository;
     }
 
@@ -32,8 +37,16 @@ public class ScheduleSlotService {
         return repository.findByActiveTrueOrderByProfessionalNameAscStartTimeAsc();
     }
 
+    public List<ScheduleSlot> findByUnit(Long unitId) {
+        return repository.findByUnitIdAndActiveTrueOrderByProfessionalNameAscStartTimeAsc(unitId);
+    }
+
     public List<ScheduleSlot> findForDate(LocalDate date) {
         return repository.findActiveForDate(date);
+    }
+
+    public List<ScheduleSlot> findForUnitAndDate(Long unitId, LocalDate date) {
+        return repository.findActiveForUnitAndDate(unitId, date);
     }
 
     public List<ScheduleSlot> findForProfessionalAndDate(Long professionalId, LocalDate date) {
@@ -42,18 +55,24 @@ public class ScheduleSlotService {
 
     public ScheduleSlot findById(Long id) {
         return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Horario nao encontrado"));
+                .orElseThrow(() -> new RuntimeException("Horário não encontrado"));
     }
 
     public ScheduleSlot create(ScheduleSlotRequest request) {
         User professional = userRepository.findById(request.getProfessionalId())
-                .orElseThrow(() -> new RuntimeException("Profissional nao encontrado"));
+                .orElseThrow(() -> new RuntimeException("Profissional não encontrado"));
+
+        if (request.getUnitId() == null) {
+            throw new RuntimeException("A unidade de atendimento é obrigatória");
+        }
+        ServiceUnit unit = unitRepository.findById(request.getUnitId())
+                .orElseThrow(() -> new RuntimeException("Unidade de atendimento não encontrada"));
 
         LocalDate startDate = LocalDate.parse(request.getStartDate());
         LocalDate endDate = LocalDate.parse(request.getEndDate());
 
         if (endDate.isBefore(startDate)) {
-            throw new RuntimeException("Data final nao pode ser anterior a data inicial");
+            throw new RuntimeException("Data final não pode ser anterior a data inicial");
         }
 
         String weekdays = request.getWeekdays();
@@ -62,7 +81,7 @@ public class ScheduleSlotService {
         }
 
         if (request.getStartTime() == null || request.getEndTime() == null) {
-            throw new RuntimeException("Horarios de inicio e fim sao obrigatorios");
+            throw new RuntimeException("Horários de início e fim sao obrigatorios");
         }
 
         Integer capacity = request.getCapacity();
@@ -73,14 +92,15 @@ public class ScheduleSlotService {
         List<String> requestedDays = Arrays.asList(weekdays.split(","));
         for (String day : requestedDays) {
             if (DayOfWeek.valueOf(day.trim()) == null) {
-                throw new RuntimeException("Dia da semana invalido: " + day);
+                throw new RuntimeException("Dia da semana inválido: " + day);
             }
         }
 
-        validateNoOverlap(professional.getId(), startDate, endDate, requestedDays, request.getStartTime(), request.getEndTime(), null);
+        validateNoOverlap(professional.getId(), unit.getId(), startDate, endDate, requestedDays, request.getStartTime(), request.getEndTime(), null);
 
         ScheduleSlot slot = new ScheduleSlot();
         slot.setProfessional(professional);
+        slot.setUnit(unit);
         slot.setStartDate(startDate);
         slot.setEndDate(endDate);
         slot.setWeekdays(weekdays);
@@ -95,13 +115,18 @@ public class ScheduleSlotService {
         ScheduleSlot slot = findById(id);
 
         if (hasActiveAppointments(id)) {
-            throw new RuntimeException("Nao e possivel editar este horario pois possui agendamentos ativos");
+            throw new RuntimeException("Não é possível editar este horário pois possui agendamentos ativos");
         }
 
         if (request.getProfessionalId() != null) {
             User professional = userRepository.findById(request.getProfessionalId())
-                    .orElseThrow(() -> new RuntimeException("Profissional nao encontrado"));
+                    .orElseThrow(() -> new RuntimeException("Profissional não encontrado"));
             slot.setProfessional(professional);
+        }
+        if (request.getUnitId() != null) {
+            ServiceUnit unit = unitRepository.findById(request.getUnitId())
+                    .orElseThrow(() -> new RuntimeException("Unidade de atendimento não encontrada"));
+            slot.setUnit(unit);
         }
         if (request.getStartDate() != null) slot.setStartDate(LocalDate.parse(request.getStartDate()));
         if (request.getEndDate() != null) slot.setEndDate(LocalDate.parse(request.getEndDate()));
@@ -110,8 +135,12 @@ public class ScheduleSlotService {
         if (request.getEndTime() != null) slot.setEndTime(request.getEndTime());
         if (request.getCapacity() != null && request.getCapacity() >= 1) slot.setCapacity(request.getCapacity());
 
+        if (slot.getUnit() == null) {
+            throw new RuntimeException("A unidade de atendimento é obrigatória");
+        }
+
         List<String> days = Arrays.asList(slot.getWeekdays().split(","));
-        validateNoOverlap(slot.getProfessional().getId(), slot.getStartDate(), slot.getEndDate(),
+        validateNoOverlap(slot.getProfessional().getId(), slot.getUnit().getId(), slot.getStartDate(), slot.getEndDate(),
                 days, slot.getStartTime(), slot.getEndTime(), id);
 
         return repository.save(slot);
@@ -121,7 +150,7 @@ public class ScheduleSlotService {
         ScheduleSlot slot = findById(id);
 
         if (hasActiveAppointments(id)) {
-            throw new RuntimeException("Nao e possivel remover este horario pois possui agendamentos ativos");
+            throw new RuntimeException("Não é possível remover este horário pois possui agendamentos ativos");
         }
 
         slot.setActive(false);
@@ -159,9 +188,9 @@ public class ScheduleSlotService {
         return false;
     }
 
-    private void validateNoOverlap(Long professionalId, LocalDate startDate, LocalDate endDate,
+    private void validateNoOverlap(Long professionalId, Long unitId, LocalDate startDate, LocalDate endDate,
                                    List<String> weekdays, String startTime, String endTime, Long excludeSlotId) {
-        List<ScheduleSlot> existing = repository.findOverlappingSlots(professionalId, startDate, endDate);
+        List<ScheduleSlot> existing = repository.findOverlappingSlotsByUnit(professionalId, unitId, startDate, endDate);
 
         for (ScheduleSlot existingSlot : existing) {
             if (excludeSlotId != null && existingSlot.getId().equals(excludeSlotId)) continue;
@@ -180,8 +209,8 @@ public class ScheduleSlotService {
                     && endTime.compareTo(existingSlot.getStartTime()) > 0;
 
             if (timeOverlap) {
-                throw new RuntimeException("Ja existe um horario para este profissional no mesmo dia e periodo. "
-                        + "Horario existente: " + existingSlot.getStartTime() + " - " + existingSlot.getEndTime());
+                throw new RuntimeException("Já existe um horário para este profissional no mesmo dia e período. "
+                        + "Horário existente: " + existingSlot.getStartTime() + " - " + existingSlot.getEndTime());
             }
         }
     }

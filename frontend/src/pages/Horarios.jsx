@@ -24,6 +24,7 @@ const formatDate = (dateStr) => {
 
 const emptyForm = {
   professionalId: '',
+  unitId: '',
   startDate: '',
   endDate: '',
   weekdays: [],
@@ -32,30 +33,36 @@ const emptyForm = {
   capacity: 1,
 };
 
-export default function Horarios() {
+export default function Horários() {
   const toast = useToast();
   const confirm = useConfirm();
   const [slots, setSlots] = useState([]);
   const [professionals, setProfessionals] = useState([]);
+  const [units, setUnits] = useState([]);
   const [selectedDate, setSelectedDate] = useState('');
+  const [selectedUnit, setSelectedUnit] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [form, setForm] = useState({ ...emptyForm });
   const [availModal, setAvailModal] = useState(null);
 
-  useEffect(() => { loadData(); }, [selectedDate]);
+  useEffect(() => { loadData(); }, [selectedDate, selectedUnit]);
 
   const loadData = async () => {
     try {
-      const slotsUrl = selectedDate ? `/schedule-slots/date/${selectedDate}` : '/schedule-slots';
-      const [slotsRes, profsRes] = await Promise.all([
-        api.get(slotsUrl),
+      const params = {};
+      if (selectedDate) params.date = selectedDate;
+      if (selectedUnit) params.unitId = selectedUnit;
+      const slotsUrl = selectedDate ? '/schedule-slots/date/' + selectedDate : '/schedule-slots';
+      const [slotsRes, profsRes, unitsRes] = await Promise.all([
+        api.get(slotsUrl, { params }),
         api.get('/users'),
+        api.get('/service-units'),
       ]);
       const slotsData = await Promise.all(slotsRes.data.map(async s => {
         try {
-          const params = selectedDate ? { date: selectedDate } : {};
-          const avail = await api.get(`/schedule-slots/${s.id}/availability`, { params });
+          const availParams = selectedDate ? { date: selectedDate } : {};
+          const avail = await api.get(`/schedule-slots/${s.id}/availability`, { params: availParams });
           return { ...s, remaining: avail.data.remaining, occupied: avail.data.occupied };
         } catch {
           return { ...s, remaining: s.capacity, occupied: 0 };
@@ -63,6 +70,7 @@ export default function Horarios() {
       }));
       setSlots(slotsData);
       setProfessionals(profsRes.data.filter(u => u.roleName === 'FONOAUDIOLOGO' || u.roleName === 'PROFISSIONAL'));
+      setUnits(unitsRes.data);
     } catch { toast.error('Erro ao carregar'); }
   };
 
@@ -87,6 +95,7 @@ export default function Horarios() {
     const days = slot.weekdays ? slot.weekdays.split(',') : [];
     setForm({
       professionalId: slot.professional?.id || '',
+      unitId: slot.unit?.id || '',
       startDate: slot.startDate || '',
       endDate: slot.endDate || '',
       weekdays: days,
@@ -98,13 +107,14 @@ export default function Horarios() {
   };
 
   const handleSave = async () => {
-    if (!form.professionalId || !form.startDate || !form.endDate || form.weekdays.length === 0 || !form.startTime || !form.endTime) {
+    if (!form.professionalId || !form.unitId || !form.startDate || !form.endDate || form.weekdays.length === 0 || !form.startTime || !form.endTime) {
       toast.warning('Preencha todos os campos obrigatorios');
       return;
     }
     try {
       const payload = {
         professionalId: Number(form.professionalId),
+        unitId: Number(form.unitId),
         startDate: form.startDate,
         endDate: form.endDate,
         weekdays: form.weekdays.join(','),
@@ -114,10 +124,10 @@ export default function Horarios() {
       };
       if (editItem) {
         await api.put(`/schedule-slots/${editItem.id}`, payload);
-        toast.success('Horario atualizado!');
+        toast.success('Horário atualizado!');
       } else {
         await api.post('/schedule-slots', payload);
-        toast.success('Horario criado!');
+        toast.success('Horário criado!');
       }
       setShowForm(false);
       loadData();
@@ -125,11 +135,11 @@ export default function Horarios() {
   };
 
   const handleDelete = async (id) => {
-    const ok = await confirm('Remover este horario?');
+    const ok = await confirm('Remover este horário?');
     if (!ok) return;
     try {
       await api.delete(`/schedule-slots/${id}`);
-      toast.success('Horario removido!');
+      toast.success('Horário removido!');
       loadData();
     } catch (err) { toast.error(err.response?.data?.message || 'Erro ao remover'); }
   };
@@ -149,14 +159,19 @@ export default function Horarios() {
   return (
     <div className="page-full">
       <div className="page-header">
-        <h1>Horarios de Atendimento</h1>
-        <button className="btn btn-primary" onClick={openNew}>+ Novo Horario</button>
+        <h1>Horários de Atendimento</h1>
+        <button className="btn btn-primary" onClick={openNew}>+ Novo Horário</button>
       </div>
       <div className="page-body">
         <div style={{ display: 'flex', gap: 12, marginBottom: 14, flexShrink: 0, alignItems: 'center' }}>
           <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)}
             style={{ padding: '8px 12px', border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, fontFamily: 'inherit', width: 150 }} />
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{slots.length} horario(s){selectedDate ? ' nesta data' : ' no total'}</span>
+          <select value={selectedUnit} onChange={e => setSelectedUnit(e.target.value)}
+            style={{ padding: '8px 12px', border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, fontFamily: 'inherit', background: 'white', width: 200 }}>
+            <option value="">Todas as Unidades</option>
+            {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{slots.length} horário(s){selectedDate ? ' nesta data' : ' no total'}</span>
         </div>
 
         <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -164,11 +179,12 @@ export default function Horarios() {
             <div className="scroll-container" style={{ flex: 1 }}>
               <table>
                 <thead>
-                  <tr><th>Profissional</th><th>Periodo</th><th>Dias</th><th>Horario</th><th>Vagas</th><th>Acoes</th></tr>
+                  <tr><th>Unidade</th><th>Profissional</th><th>Período</th><th>Dias</th><th>Horário</th><th>Vagas</th><th>Ações</th></tr>
                 </thead>
                 <tbody>
                   {slots.map(s => (
                     <tr key={s.id}>
+                      <td>{s.unit?.name || '-'}</td>
                       <td>{s.professional?.name}</td>
                       <td style={{ whiteSpace: 'nowrap' }}>{formatDate(s.startDate)} a {formatDate(s.endDate)}</td>
                       <td style={{ fontSize: 12 }}>{formatWeekdays(s.weekdays)}</td>
@@ -187,7 +203,7 @@ export default function Horarios() {
                       </td>
                     </tr>
                   ))}
-                  {slots.length === 0 && <tr><td colSpan={6} className="empty-state" style={{ padding: 40 }}>Nenhum horario para esta data</td></tr>}
+                  {slots.length === 0 && <tr><td colSpan={7} className="empty-state" style={{ padding: 40 }}>Nenhum horário para esta data</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -199,11 +215,18 @@ export default function Horarios() {
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>{editItem ? 'Editar Horario' : 'Novo Horario'}</h3>
+              <h3>{editItem ? 'Editar Horário' : 'Novo Horário'}</h3>
               <button className="modal-close" onClick={() => setShowForm(false)}>&times;</button>
             </div>
             <div className="modal-body">
               <div className="form-grid">
+                <div className="form-group full-width required">
+                  <label>Unidade de Atendimento</label>
+                  <select value={form.unitId} onChange={e => setForm({ ...form, unitId: e.target.value })}>
+                    <option value="">Selecione...</option>
+                    {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  </select>
+                </div>
                 <div className="form-group full-width required">
                   <label>Profissional</label>
                   <select value={form.professionalId} onChange={e => setForm({ ...form, professionalId: e.target.value })}>
@@ -212,7 +235,7 @@ export default function Horarios() {
                   </select>
                 </div>
                 <div className="form-group required">
-                  <label>Data Inicio</label>
+                  <label>Data Início</label>
                   <input type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} />
                 </div>
                 <div className="form-group required">
@@ -220,15 +243,15 @@ export default function Horarios() {
                   <input type="date" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} />
                 </div>
                 <div className="form-group required">
-                  <label>Horario Inicio</label>
+                  <label>Horário Início</label>
                   <input type="time" value={form.startTime} onChange={e => setForm({ ...form, startTime: e.target.value })} />
                 </div>
                 <div className="form-group required">
-                  <label>Horario Fim</label>
+                  <label>Horário Fim</label>
                   <input type="time" value={form.endTime} onChange={e => setForm({ ...form, endTime: e.target.value })} />
                 </div>
                 <div className="form-group full-width required">
-                  <label>Vagas por Dia (nesse horario)</label>
+                  <label>Vagas por Dia (nesse horário)</label>
                   <input type="number" min="1" value={form.capacity} onChange={e => setForm({ ...form, capacity: Number(e.target.value) })} />
                 </div>
                 <div className="form-group full-width">
@@ -255,16 +278,17 @@ export default function Horarios() {
 
       {availModal && (
         <div className="modal-overlay" onClick={() => setAvailModal(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 360 }}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Vagas - {selectedDate}</h3>
               <button className="modal-close" onClick={() => setAvailModal(null)}>&times;</button>
             </div>
             <div className="modal-body" style={{ textAlign: 'center', padding: 24 }}>
-              <div style={{ fontSize: 14, marginBottom: 8 }}>{availModal.slot?.professional?.name}</div>
+              <div style={{ fontSize: 14, marginBottom: 4 }}>{availModal.slot?.professional?.name}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>{availModal.slot?.unit?.name || ''}</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>{availModal.slot?.startTime} - {availModal.slot?.endTime}</div>
               <div style={{ fontSize: 48, fontWeight: 700, color: availModal.remaining > 0 ? 'var(--primary)' : 'var(--danger)' }}>{availModal.remaining}</div>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>vagas disponiveis</div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>vagas disponíveis</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>Total: {availModal.capacity} | Ocupadas: {availModal.occupied}</div>
             </div>
             <div className="modal-footer">

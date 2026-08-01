@@ -10,12 +10,20 @@ import java.util.List;
 public interface ScheduleSlotRepository extends JpaRepository<ScheduleSlot, Long> {
     List<ScheduleSlot> findByActiveTrueOrderByProfessionalNameAscStartTimeAsc();
 
+    List<ScheduleSlot> findByUnitIdAndActiveTrueOrderByProfessionalNameAscStartTimeAsc(Long unitId);
+
     @Query("SELECT s FROM ScheduleSlot s WHERE s.active = true AND :date BETWEEN s.startDate AND s.endDate ORDER BY s.professional.name ASC, s.startTime ASC")
     List<ScheduleSlot> findActiveForDate(@Param("date") LocalDate date);
+
+    @Query("SELECT s FROM ScheduleSlot s WHERE s.active = true AND s.unit.id = :unitId AND :date BETWEEN s.startDate AND s.endDate ORDER BY s.professional.name ASC, s.startTime ASC")
+    List<ScheduleSlot> findActiveForUnitAndDate(@Param("unitId") Long unitId, @Param("date") LocalDate date);
 
     @Query("SELECT s FROM ScheduleSlot s WHERE s.active = true AND s.professional.id = :profId AND :date BETWEEN s.startDate AND s.endDate ORDER BY s.startTime ASC")
     List<ScheduleSlot> findActiveForProfessionalAndDate(@Param("profId") Long professionalId, @Param("date") LocalDate date);
 
     @Query("SELECT s FROM ScheduleSlot s WHERE s.active = true AND s.professional.id = :profId AND s.startDate <= :endDate AND s.endDate >= :startDate")
     List<ScheduleSlot> findOverlappingSlots(@Param("profId") Long professionalId, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    @Query("SELECT s FROM ScheduleSlot s WHERE s.active = true AND s.professional.id = :profId AND s.unit.id = :unitId AND s.startDate <= :endDate AND s.endDate >= :startDate")
+    List<ScheduleSlot> findOverlappingSlotsByUnit(@Param("profId") Long professionalId, @Param("unitId") Long unitId, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 }

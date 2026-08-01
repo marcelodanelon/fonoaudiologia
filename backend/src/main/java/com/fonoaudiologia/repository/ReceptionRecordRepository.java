@@ -7,6 +7,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface ReceptionRecordRepository extends JpaRepository<ReceptionRecord, Long> {
+    boolean existsByPatientId(Long patientId);
+
     List<ReceptionRecord> findByOperatorIdOrderByCreatedAtDesc(Long operatorId);
 
     @Query("SELECT COUNT(r) FROM ReceptionRecord r WHERE r.createdAt >= :date")
@@ -23,4 +25,6 @@ public interface ReceptionRecordRepository extends JpaRepository<ReceptionRecord
     long countPending();
 
     List<ReceptionRecord> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
+    List<ReceptionRecord> findByUnitIdAndCreatedAtBetween(Long unitId, LocalDateTime start, LocalDateTime end);
 }

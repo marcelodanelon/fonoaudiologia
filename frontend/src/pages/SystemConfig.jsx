@@ -4,12 +4,13 @@ import { useToast } from '../context/ToastContext';
 
 const PERMISSIONS = [
   { key: 'canAccessDashboard', label: 'Dashboard', desc: 'Acesso ao painel inicial com metricas' },
-  { key: 'canAccessReception', label: 'Recepcao', desc: 'Registro de check-in, contatos e visitas' },
-  { key: 'canAccessConsultation', label: 'Consultas', desc: 'Atendimentos, prontuarios e audiogramas' },
-  { key: 'canAccessPatients', label: 'Pacientes', desc: 'Cadastro e historico de pacientes' },
-  { key: 'canAccessOperators', label: 'Operadores', desc: 'Gerenciamento de usuarios do sistema' },
+  { key: 'canAccessReception', label: 'Recepção', desc: 'Registro de check-in, contatos e visitas' },
+  { key: 'canAccessConsultation', label: 'Consultas', desc: 'Atendimentos, prontuários e audiogramas' },
+  { key: 'canAccessPatients', label: 'Pacientes', desc: 'Cadastro e histórico de pacientes' },
+  { key: 'canAccessOperators', label: 'Operadores', desc: 'Gerenciamento de usuários do sistema' },
   { key: 'canAccessAuditLog', label: 'Auditoria', desc: 'Consulta ao log de auditoria' },
-  { key: 'canAccessSystemConfig', label: 'Configuracoes', desc: 'Configuracoes gerais e perfis de acesso' },
+  { key: 'canAccessSystemConfig', label: 'Configurações', desc: 'Configurações gerais e perfis de acesso' },
+  { key: 'canAccessInventory', label: 'Estoque', desc: 'Insumos, entradas e saídas de estoque' },
 ];
 
 export default function SystemConfig() {
@@ -28,7 +29,7 @@ export default function SystemConfig() {
   const handleUpdateConfig = async (key, value) => {
     try {
       await api.put('/config', { configKey: key, configValue: value });
-      toast.success('Configuracao atualizada!');
+      toast.success('Configuração atualizada!');
       loadConfigs();
     } catch (err) { toast.error(err.response?.data?.message || 'Erro ao atualizar'); }
   };
@@ -44,6 +45,7 @@ export default function SystemConfig() {
       canAccessOperators: role.canAccessOperators,
       canAccessAuditLog: role.canAccessAuditLog,
       canAccessSystemConfig: role.canAccessSystemConfig,
+      canAccessInventory: role.canAccessInventory,
     });
   };
 
@@ -57,20 +59,20 @@ export default function SystemConfig() {
   };
 
   const configDescriptions = {
-    'session_timeout_minutes': { label: 'Tempo de Sessao (minutos)', description: 'Tempo de inatividade antes do logout automatico.' },
-    'clinic_name': { label: 'Nome da Clinica', description: 'Nome exibido no cabecalho do sistema' },
-    'reception_poll_interval': { label: 'Intervalo de Verificacao (ms)', description: 'Tempo em milissegundos para verificar novos pacientes na recepcao. Padrao: 10000ms (10s).' },
+    'session_timeout_minutes': { label: 'Tempo de Sessão (minutos)', description: 'Tempo de inatividade antes do logout automatico.' },
+    'clinic_name': { label: 'Nome da Clínica', description: 'Nome exibido no cabecalho do sistema' },
+    'reception_poll_interval': { label: 'Intervalo de Verificação (ms)', description: 'Tempo em milissegundos para verificar novos pacientes na recepção. Padrão: 10000ms (10s).' },
   };
 
   return (
     <div className="page-full">
       <div className="page-header">
-        <h1>Configuracoes do Sistema</h1>
+        <h1>Configurações do Sistema</h1>
       </div>
 
       <div className="tabs" style={{ flexShrink: 0, marginBottom: 16 }}>
         <button className={`tab ${tab === 'general' ? 'active' : ''}`} onClick={() => setTab('general')}>
-          Configuracoes Gerais
+          Configurações Gerais
         </button>
         <button className={`tab ${tab === 'roles' ? 'active' : ''}`} onClick={() => setTab('roles')}>
           Perfis de Acesso
@@ -82,7 +84,7 @@ export default function SystemConfig() {
 
       {tab === 'general' && (
         <div className="card" style={{ flex: 1 }}>
-          <div className="card-header"><h3>Configuracoes Gerais</h3></div>
+          <div className="card-header"><h3>Configurações Gerais</h3></div>
           <div className="card-body">
             {configs.map(c => {
               const desc = configDescriptions[c.configKey] || { label: c.configKey, description: c.description };
@@ -107,7 +109,7 @@ export default function SystemConfig() {
                   </div>
                   {c.updatedBy && (
                     <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 10 }}>
-                      Ultima atualizacao por {c.updatedBy.name} em {c.updatedAt ? new Date(c.updatedAt).toLocaleString('pt-BR') : new Date(c.createdAt).toLocaleString('pt-BR')}
+                      última atualização por {c.updatedBy.name} em {c.updatedAt ? new Date(c.updatedAt).toLocaleString('pt-BR') : new Date(c.createdAt).toLocaleString('pt-BR')}
                     </p>
                   )}
                 </div>
@@ -149,13 +151,13 @@ export default function SystemConfig() {
               </div>
               <div className="card-body" style={{ flex: 1 }}>
                 <div className="form-group">
-                  <label>Descricao do Perfil</label>
+                  <label>Descrição do Perfil</label>
                   <input value={roleForm.description || ''} onChange={e => setRoleForm({...roleForm, description: e.target.value})} />
                 </div>
 
                 <div className="form-section-title" style={{ marginTop: 20 }}>Privilegios de Acesso</div>
                 <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 14 }}>
-                  Selecione os modulos que os usuarios deste perfil podem acessar.
+                  Selecione os modulos que os usuários deste perfil podem acessar.
                 </p>
 
                 {PERMISSIONS.map(p => (
@@ -186,11 +188,11 @@ export default function SystemConfig() {
           <div className="table-container">
             <table>
               <tbody>
-                <tr><td style={{ fontWeight: 600, width: 220 }}>Versao</td><td>1.0.0</td></tr>
+                <tr><td style={{ fontWeight: 600, width: 220 }}>Versão</td><td>1.0.0</td></tr>
                 <tr><td style={{ fontWeight: 600 }}>Tecnologia Backend</td><td>Spring Boot 2.7 + Java 8</td></tr>
                 <tr><td style={{ fontWeight: 600 }}>Tecnologia Frontend</td><td>React 18 + Vite</td></tr>
                 <tr><td style={{ fontWeight: 600 }}>Banco de Dados</td><td>H2 (embebido)</td></tr>
-                <tr><td style={{ fontWeight: 600 }}>Autenticacao</td><td>JWT (JSON Web Token)</td></tr>
+                <tr><td style={{ fontWeight: 600 }}>Autenticação</td><td>JWT (JSON Web Token)</td></tr>
               </tbody>
             </table>
           </div>

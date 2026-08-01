@@ -7,6 +7,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface ConsultationRepository extends JpaRepository<Consultation, Long> {
+    boolean existsByPatientId(Long patientId);
+
     List<Consultation> findByPatientIdOrderByCreatedAtDesc(Long patientId);
 
     List<Consultation> findByProfessionalIdOrderByCreatedAtDesc(Long professionalId);
@@ -27,4 +29,6 @@ public interface ConsultationRepository extends JpaRepository<Consultation, Long
     long countByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
 
     List<Consultation> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
+    List<Consultation> findByUnitIdAndCreatedAtBetween(Long unitId, LocalDateTime start, LocalDateTime end);
 }

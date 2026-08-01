@@ -36,15 +36,16 @@ public class ReceptionController {
     @GetMapping
     public ResponseEntity<?> getAll(
             @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate) {
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) Long unitId) {
         try {
             List<ReceptionRecord> list;
-            if (startDate != null || endDate != null) {
-                java.time.LocalDateTime start = startDate != null ? java.time.LocalDate.parse(startDate).atStartOfDay() : java.time.LocalDateTime.of(2000, 1, 1, 0, 0);
-                java.time.LocalDateTime end = endDate != null ? java.time.LocalDate.parse(endDate).atTime(23, 59, 59) : java.time.LocalDateTime.now().plusYears(1);
-                list = receptionRecordRepository.findByCreatedAtBetween(start, end);
+            java.time.LocalDateTime start = startDate != null ? java.time.LocalDate.parse(startDate).atStartOfDay() : java.time.LocalDateTime.of(2000, 1, 1, 0, 0);
+            java.time.LocalDateTime end = endDate != null ? java.time.LocalDate.parse(endDate).atTime(23, 59, 59) : java.time.LocalDateTime.now().plusYears(1);
+            if (unitId != null) {
+                list = receptionRecordRepository.findByUnitIdAndCreatedAtBetween(unitId, start, end);
             } else {
-                list = receptionRecordRepository.findAll();
+                list = receptionRecordRepository.findByCreatedAtBetween(start, end);
             }
             return ResponseEntity.ok(list);
         } catch (Exception e) {
@@ -58,7 +59,7 @@ public class ReceptionController {
             User user = auditService.getCurrentUser();
             ReceptionRecord record = receptionService.create(request, user != null ? user.getId() : null);
             auditService.log("CREATE", "RECEPTION", record.getId(),
-                    "Registro de recepcao: " + record.getType(), httpRequest.getRemoteAddr());
+                    "Registro de recepção: " + record.getType(), httpRequest.getRemoteAddr());
             return ResponseEntity.ok(record);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(new java.util.HashMap<String, Object>() {{ put("message", e.getMessage()); }});
@@ -69,7 +70,7 @@ public class ReceptionController {
     public ResponseEntity<?> updateStatus(@PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
         try {
             ReceptionRecord record = receptionRecordRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Registro nao encontrado"));
+                .orElseThrow(() -> new RuntimeException("Registro não encontrado"));
             String status = body.get("status");
             if (status != null) {
                 record.setStatus(status);
@@ -84,19 +85,19 @@ public class ReceptionController {
     @GetMapping("/ready")
     public ResponseEntity<?> findReadyForConsultation(
             @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate) {
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) Long unitId) {
         try {
             List<ReceptionRecord> checkins;
-            if (startDate != null || endDate != null) {
-                java.time.LocalDateTime start = startDate != null ? java.time.LocalDate.parse(startDate).atStartOfDay() : java.time.LocalDateTime.of(2000, 1, 1, 0, 0);
-                java.time.LocalDateTime end = endDate != null ? java.time.LocalDate.parse(endDate).atTime(23, 59, 59) : java.time.LocalDateTime.now().plusYears(1);
-                checkins = receptionRecordRepository.findByCreatedAtBetween(start, end).stream()
+            java.time.LocalDateTime start = startDate != null ? java.time.LocalDate.parse(startDate).atStartOfDay() : java.time.LocalDateTime.of(2000, 1, 1, 0, 0);
+            java.time.LocalDateTime end = endDate != null ? java.time.LocalDate.parse(endDate).atTime(23, 59, 59) : java.time.LocalDateTime.now().plusYears(1);
+            if (unitId != null) {
+                checkins = receptionRecordRepository.findByUnitIdAndCreatedAtBetween(unitId, start, end).stream()
                         .filter(r -> ("CHECKIN".equals(r.getType()) || "WALKIN".equals(r.getType())) && r.getPatient() != null
                                 && !"ATENDIDO".equals(r.getStatus()) && !"CANCELADO".equals(r.getStatus()))
                         .collect(Collectors.toList());
             } else {
-                checkins = receptionRecordRepository.findAll()
-                        .stream()
+                checkins = receptionRecordRepository.findByCreatedAtBetween(start, end).stream()
                         .filter(r -> ("CHECKIN".equals(r.getType()) || "WALKIN".equals(r.getType())) && r.getPatient() != null
                                 && !"ATENDIDO".equals(r.getStatus()) && !"CANCELADO".equals(r.getStatus()))
                         .collect(Collectors.toList());

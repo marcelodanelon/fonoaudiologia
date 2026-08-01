@@ -35,7 +35,7 @@ public class SystemConfigController {
             User user = auditService.getCurrentUser();
             SystemConfig config = configService.update(request.getConfigKey(), request.getConfigValue(), user);
             auditService.log("UPDATE", "CONFIG", config.getId(),
-                    "Configuracao atualizada: " + request.getConfigKey() + " = " + request.getConfigValue(),
+                    "Configuração atualizada: " + request.getConfigKey() + " = " + request.getConfigValue(),
                     httpRequest.getRemoteAddr());
             return ResponseEntity.ok(config);
         } catch (RuntimeException e) {

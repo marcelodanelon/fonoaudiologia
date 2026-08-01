@@ -36,6 +36,9 @@ public class Role {
     @Column(nullable = false)
     private boolean canAccessSystemConfig = false;
 
+    @Column
+    private Boolean canAccessInventory = false;
+
     public Role() {}
 
     public Role(String name, String description) {
@@ -52,18 +55,19 @@ public class Role {
         r.setCanAccessOperators(true);
         r.setCanAccessAuditLog(true);
         r.setCanAccessSystemConfig(true);
+        r.setCanAccessInventory(true);
         return r;
     }
 
     public static Role recepcionista() {
-        Role r = new Role("RECEPCIONISTA", "Acesso a recepcao e pacientes");
+        Role r = new Role("RECEPCIONISTA", "Acesso a recepção e pacientes");
         r.setCanAccessDashboard(true);
         r.setCanAccessReception(true);
         r.setCanAccessPatients(true);
         return r;
     }
 
-    public static Role fonoaudiologo() {
+    public static Role fonoaudiólogo() {
         Role r = new Role("FONOAUDIOLOGO", "Acesso a consultas e audiogramas");
         r.setCanAccessDashboard(true);
         r.setCanAccessConsultation(true);
@@ -91,4 +95,6 @@ public class Role {
     public void setCanAccessAuditLog(boolean canAccessAuditLog) { this.canAccessAuditLog = canAccessAuditLog; }
     public boolean isCanAccessSystemConfig() { return canAccessSystemConfig; }
     public void setCanAccessSystemConfig(boolean canAccessSystemConfig) { this.canAccessSystemConfig = canAccessSystemConfig; }
+    public boolean isCanAccessInventory() { return canAccessInventory != null && canAccessInventory; }
+    public void setCanAccessInventory(Boolean canAccessInventory) { this.canAccessInventory = canAccessInventory; }
 }

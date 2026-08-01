@@ -19,6 +19,10 @@ public class ReceptionRecord {
     @JoinColumn(name = "operator_id", nullable = false)
     private User operator;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "unit_id")
+    private ServiceUnit unit;
+
     @Column(nullable = false)
     private String type; // CHECKIN, PHONE_CONTACT, WALKIN
 
@@ -39,6 +43,8 @@ public class ReceptionRecord {
     public void setPatient(Patient patient) { this.patient = patient; }
     public User getOperator() { return operator; }
     public void setOperator(User operator) { this.operator = operator; }
+    public ServiceUnit getUnit() { return unit; }
+    public void setUnit(ServiceUnit unit) { this.unit = unit; }
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }
     public String getContactType() { return contactType; }

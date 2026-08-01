@@ -38,8 +38,8 @@ export default function AuditLog() {
             <thead>
               <tr>
                 <th>Data/Hora</th>
-                <th>Usuario</th>
-                <th>Acao</th>
+                <th>Usuário</th>
+                <th>Ação</th>
                 <th>Entidade</th>
                 <th>Detalhes</th>
                 <th>IP</th>

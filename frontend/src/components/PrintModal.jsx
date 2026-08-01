@@ -25,7 +25,7 @@ export default function PrintModal({ html, onClose }) {
     <div className="modal-overlay" onClick={onClose} style={{ zIndex: 200 }}>
       <div className="print-modal" onClick={e => e.stopPropagation()}>
         <div className="print-modal-header">
-          <h3>Vizualizacao do Documento</h3>
+          <h3>Visualização do Documento</h3>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-primary btn-sm" onClick={handlePrint}>
               Imprimir / Salvar PDF

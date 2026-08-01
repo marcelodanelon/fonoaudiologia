@@ -42,18 +42,18 @@ public class AuthController {
     public ResponseEntity<?> refresh(@RequestBody RefreshRequest request) {
         String oldToken = request.getToken();
         if (oldToken == null || oldToken.isEmpty()) {
-            return ResponseEntity.badRequest().body(new ErrorResponse("Token obrigatorio"));
+            return ResponseEntity.badRequest().body(new ErrorResponse("Token obrigatório"));
         }
 
         try {
             long timeUntilExpiration = jwtTokenProvider.getTimeUntilExpiration(oldToken);
             if (timeUntilExpiration == 0) {
-                return ResponseEntity.badRequest().body(new ErrorResponse("Token invalido"));
+                return ResponseEntity.badRequest().body(new ErrorResponse("Token inválido"));
             }
 
             long refreshWindow = 24L * 60 * 60 * 1000;
             if (timeUntilExpiration > refreshWindow) {
-                return ResponseEntity.badRequest().body(new ErrorResponse("Token ainda valido, refresh nao necessario"));
+                return ResponseEntity.badRequest().body(new ErrorResponse("Token ainda válido, refresh não necessário"));
             }
             if (timeUntilExpiration < -refreshWindow) {
                 return ResponseEntity.badRequest().body(new ErrorResponse("Token expirado"));
@@ -67,7 +67,7 @@ public class AuthController {
             response.setToken(newToken);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(new ErrorResponse("Token invalido"));
+            return ResponseEntity.badRequest().body(new ErrorResponse("Token inválido"));
         }
     }
 

@@ -31,14 +31,14 @@ public class UserService {
 
     public LoginResponse login(String username, String password) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Usuario ou senha invalidos"));
+                .orElseThrow(() -> new RuntimeException("Usuário ou senha invalidos"));
 
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new RuntimeException("Usuario ou senha invalidos");
+            throw new RuntimeException("Usuário ou senha invalidos");
         }
 
         if (!user.isActive()) {
-            throw new RuntimeException("Usuario desativado");
+            throw new RuntimeException("Usuário desativado");
         }
 
         String token = jwtTokenProvider.generateToken(user.getId(), user.getUsername());
@@ -52,6 +52,7 @@ public class UserService {
         if (role.isCanAccessOperators()) permissions.add("operators");
         if (role.isCanAccessAuditLog()) permissions.add("auditLog");
         if (role.isCanAccessSystemConfig()) permissions.add("systemConfig");
+        if (role.isCanAccessInventory()) permissions.add("inventory");
 
         long timeout = 30;
         Optional<SystemConfig> cfg = configRepository.findByConfigKey("session_timeout_minutes");
@@ -76,24 +77,24 @@ public class UserService {
     }
 
     public UserResponse findById(Long id) {
-        User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("Usuario nao encontrado"));
+        User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
         return toResponse(user);
     }
 
     public UserResponse create(UserRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("Nome de usuario ja existe");
+            throw new RuntimeException("Nome de usuário já existe");
         }
         if (request.getEmail() != null && userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email ja cadastrado");
+            throw new RuntimeException("E-mail já cadastrado");
         }
         if (request.getCpf() != null && userRepository.existsByCpf(request.getCpf())) {
-            throw new RuntimeException("CPF ja cadastrado");
+            throw new RuntimeException("CPF já cadastrado");
         }
         validatePasswordStrength(request.getPassword());
 
         Role role = roleRepository.findById(request.getRoleId())
-                .orElseThrow(() -> new RuntimeException("Perfil nao encontrado"));
+                .orElseThrow(() -> new RuntimeException("Perfil não encontrado"));
 
         User user = new User();
         user.setUsername(request.getUsername());
@@ -110,7 +111,7 @@ public class UserService {
 
     public UserResponse update(Long id, UserRequest request) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuario nao encontrado"));
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
         user.setName(request.getName());
         user.setEmail(request.getEmail());
@@ -120,7 +121,7 @@ public class UserService {
 
         if (request.getRoleId() != null) {
             Role role = roleRepository.findById(request.getRoleId())
-                    .orElseThrow(() -> new RuntimeException("Perfil nao encontrado"));
+                    .orElseThrow(() -> new RuntimeException("Perfil não encontrado"));
             user.setRole(role);
         }
 
@@ -134,7 +135,7 @@ public class UserService {
 
     public void delete(Long id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuario nao encontrado"));
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
         user.setActive(false);
         userRepository.save(user);
     }
@@ -154,7 +155,7 @@ public class UserService {
             throw new RuntimeException("A senha deve conter pelo menos uma letra minuscula");
         }
         if (!password.matches(".*\\d.*")) {
-            throw new RuntimeException("A senha deve conter pelo menos um numero");
+            throw new RuntimeException("A senha deve conter pelo menos um número");
         }
     }
 

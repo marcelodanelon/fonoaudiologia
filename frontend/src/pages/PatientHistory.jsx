@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import { statusLabel } from '../utils/statusLabels';
+import Pagination from '../components/Pagination';
+
+const PAGE_SIZE = 12;
 
 export default function PatientHistory() {
   const [patients, setPatients] = useState([]);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [consultations, setConsultations] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
@@ -19,6 +23,8 @@ export default function PatientHistory() {
   const [dateTo, setDateTo] = useState('');
 
   useEffect(() => { loadPatients(); }, []);
+
+  useEffect(() => { setPage(0); }, [search, dateFrom, dateTo]);
 
   const loadPatients = async () => {
     const res = await api.get('/patients');
@@ -69,10 +75,10 @@ export default function PatientHistory() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Deseja desativar este paciente?')) return;
+    if (!confirm('Deseja excluir este paciente?')) return;
     try {
       await api.delete(`/patients/${id}`);
-      showMessage('Paciente desativado!');
+      showMessage('Paciente excluído!');
       loadPatients();
       if (selectedPatient?.id === id) setSelectedPatient(null);
     } catch (err) {
@@ -87,6 +93,9 @@ export default function PatientHistory() {
     const s = search.toLowerCase();
     return p.name?.toLowerCase().includes(s) || p.cpf?.includes(s) || p.phone?.includes(s) || p.email?.toLowerCase().includes(s);
   });
+
+  const totalPages = Math.ceil(filteredPatients.length / PAGE_SIZE);
+  const pagedPatients = filteredPatients.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   return (
     <div>
@@ -108,7 +117,7 @@ export default function PatientHistory() {
             <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
               placeholder="De" style={{ padding: '8px 12px', border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, fontFamily: 'inherit', width: 140 }} />
             <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-              placeholder="Ate" style={{ padding: '8px 12px', border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, fontFamily: 'inherit', width: 140 }} />
+              placeholder="Até" style={{ padding: '8px 12px', border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, fontFamily: 'inherit', width: 140 }} />
           </div>
           <div className="table-container">
             <table>
@@ -117,12 +126,12 @@ export default function PatientHistory() {
                   <th>Nome</th>
                   <th>CPF</th>
                   <th>Telefone</th>
-                  <th>Situacao</th>
-                  <th>Acoes</th>
+                  <th>Situação</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredPatients.map(p => (
+                {pagedPatients.map(p => (
                   <tr key={p.id}
                     style={{ cursor: 'pointer', background: selectedPatient?.id === p.id ? 'var(--primary-light)' : '' }}
                     onClick={() => loadPatientHistory(p)}>
@@ -144,6 +153,7 @@ export default function PatientHistory() {
               </tbody>
             </table>
           </div>
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </div>
 
         {selectedPatient && (
@@ -159,16 +169,16 @@ export default function PatientHistory() {
                 <div><strong>Nascimento:</strong> {selectedPatient.birthDate || '-'}</div>
                 <div><strong>Telefone:</strong> {selectedPatient.phone}</div>
                 <div><strong>Telefone 2:</strong> {selectedPatient.phone2 || '-'}</div>
-                <div><strong>Email:</strong> {selectedPatient.email || '-'}</div>
+                <div><strong>E-mail:</strong> {selectedPatient.email || '-'}</div>
                 <div><strong>Cidade:</strong> {selectedPatient.city || '-'}</div>
-                <div style={{ gridColumn: '1/-1' }}><strong>Endereco:</strong> {selectedPatient.address || '-'}</div>
-                {selectedPatient.observations && <div style={{ gridColumn: '1/-1' }}><strong>Observacoes:</strong> {selectedPatient.observations}</div>}
+                <div style={{ gridColumn: '1/-1' }}><strong>Endereço:</strong> {selectedPatient.address || '-'}</div>
+                {selectedPatient.observations && <div style={{ gridColumn: '1/-1' }}><strong>Observações:</strong> {selectedPatient.observations}</div>}
               </div>
             </div>
 
             <div className="card">
               <div className="card-header">
-                <h3>Historico de Atendimentos</h3>
+                <h3>Histórico de Atendimentos</h3>
               </div>
               {consultations.length > 0 ? (
                 <div className="timeline">
@@ -183,7 +193,7 @@ export default function PatientHistory() {
                           </span>
                         </div>
                         {c.chiefComplaint && <p><strong>Queixa:</strong> {c.chiefComplaint}</p>}
-                        {c.diagnosis && <p><strong>Diagnostico:</strong> {c.diagnosis}</p>}
+                        {c.diagnosis && <p><strong>Diagnóstico:</strong> {c.diagnosis}</p>}
                         {c.conduct && <p><strong>Conduta:</strong> {c.conduct}</p>}
                         {c.operator && <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>Registrado por: {c.operator?.name}</p>}
                       </div>
@@ -224,7 +234,7 @@ export default function PatientHistory() {
 
       {showForm && (
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 600 }}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{editPatient ? 'Editar Paciente' : 'Novo Paciente'}</h2>
               <button className="modal-close" onClick={() => setShowForm(false)}>&times;</button>
@@ -256,11 +266,15 @@ export default function PatientHistory() {
                   <input value={form.phone2} onChange={e => setForm({...form, phone2: e.target.value})} />
                 </div>
                 <div className="form-group">
-                  <label>Email</label>
+                  <label>E-mail</label>
                   <input value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
                 </div>
+                <div className="form-group">
+                  <label>Estado</label>
+                  <input value={form.state} onChange={e => setForm({...form, state: e.target.value})} />
+                </div>
                 <div className="form-group full-width">
-                  <label>Endereco</label>
+                  <label>Endereço</label>
                   <input value={form.address} onChange={e => setForm({...form, address: e.target.value})} />
                 </div>
                 <div className="form-group">
@@ -268,11 +282,14 @@ export default function PatientHistory() {
                   <input value={form.city} onChange={e => setForm({...form, city: e.target.value})} />
                 </div>
                 <div className="form-group">
-                  <label>Estado</label>
-                  <input value={form.state} onChange={e => setForm({...form, state: e.target.value})} />
+                  <label>Situação</label>
+                  <select value={form.active} onChange={e => setForm({...form, active: e.target.value === 'true'})}>
+                    <option value="true">Ativo</option>
+                    <option value="false">Inativo</option>
+                  </select>
                 </div>
                 <div className="form-group full-width">
-                  <label>Observacoes</label>
+                  <label>Observações</label>
                   <textarea rows={2} value={form.observations} onChange={e => setForm({...form, observations: e.target.value})} />
                 </div>
               </div>

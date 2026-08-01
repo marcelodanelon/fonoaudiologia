@@ -82,7 +82,7 @@ public class UserController {
     public ResponseEntity<?> updateRole(@PathVariable Long id, @RequestBody Map<String, Object> body, HttpServletRequest httpRequest) {
         try {
             Role role = roleRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Perfil nao encontrado"));
+                    .orElseThrow(() -> new RuntimeException("Perfil não encontrado"));
 
             if (body.containsKey("description")) role.setDescription((String) body.get("description"));
             if (body.containsKey("canAccessDashboard")) role.setCanAccessDashboard((Boolean) body.get("canAccessDashboard"));
@@ -92,6 +92,7 @@ public class UserController {
             if (body.containsKey("canAccessOperators")) role.setCanAccessOperators((Boolean) body.get("canAccessOperators"));
             if (body.containsKey("canAccessAuditLog")) role.setCanAccessAuditLog((Boolean) body.get("canAccessAuditLog"));
             if (body.containsKey("canAccessSystemConfig")) role.setCanAccessSystemConfig((Boolean) body.get("canAccessSystemConfig"));
+            if (body.containsKey("canAccessInventory")) role.setCanAccessInventory((Boolean) body.get("canAccessInventory"));
 
             roleRepository.save(role);
             auditService.log("UPDATE", "ROLE", role.getId(),

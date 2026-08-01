@@ -87,11 +87,11 @@ export default function Operators() {
             <thead>
               <tr>
                 <th>Nome</th>
-                <th>Usuario</th>
-                <th>Email</th>
+                <th>Usuário</th>
+                <th>E-mail</th>
                 <th>Perfil</th>
-                <th>Situacao</th>
-                <th>Acoes</th>
+                <th>Situação</th>
+                <th>Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -124,14 +124,15 @@ export default function Operators() {
             <thead>
               <tr>
                 <th>Perfil</th>
-                <th>Descricao</th>
+                <th>Descrição</th>
                 <th>Dashboard</th>
-                <th>Recepcao</th>
+                <th>Recepção</th>
                 <th>Consultas</th>
                 <th>Pacientes</th>
                 <th>Operadores</th>
                 <th>Auditoria</th>
                 <th>Config</th>
+                <th>Estoque</th>
               </tr>
             </thead>
             <tbody>
@@ -139,13 +140,14 @@ export default function Operators() {
                 <tr key={r.id}>
                   <td><strong>{r.name}</strong></td>
                   <td>{r.description}</td>
-                  <td>{r.canAccessDashboard ? <span className="badge badge-success">Sim</span> : <span className="badge badge-danger">Nao</span>}</td>
-                  <td>{r.canAccessReception ? <span className="badge badge-success">Sim</span> : <span className="badge badge-danger">Nao</span>}</td>
-                  <td>{r.canAccessConsultation ? <span className="badge badge-success">Sim</span> : <span className="badge badge-danger">Nao</span>}</td>
-                  <td>{r.canAccessPatients ? <span className="badge badge-success">Sim</span> : <span className="badge badge-danger">Nao</span>}</td>
-                  <td>{r.canAccessOperators ? <span className="badge badge-success">Sim</span> : <span className="badge badge-danger">Nao</span>}</td>
-                  <td>{r.canAccessAuditLog ? <span className="badge badge-success">Sim</span> : <span className="badge badge-danger">Nao</span>}</td>
-                  <td>{r.canAccessSystemConfig ? <span className="badge badge-success">Sim</span> : <span className="badge badge-danger">Nao</span>}</td>
+                  <td>{r.canAccessDashboard ? <span className="badge badge-success">Sim</span> : <span className="badge badge-danger">Não</span>}</td>
+                  <td>{r.canAccessReception ? <span className="badge badge-success">Sim</span> : <span className="badge badge-danger">Não</span>}</td>
+                  <td>{r.canAccessConsultation ? <span className="badge badge-success">Sim</span> : <span className="badge badge-danger">Não</span>}</td>
+                  <td>{r.canAccessPatients ? <span className="badge badge-success">Sim</span> : <span className="badge badge-danger">Não</span>}</td>
+                  <td>{r.canAccessOperators ? <span className="badge badge-success">Sim</span> : <span className="badge badge-danger">Não</span>}</td>
+                  <td>{r.canAccessAuditLog ? <span className="badge badge-success">Sim</span> : <span className="badge badge-danger">Não</span>}</td>
+                  <td>{r.canAccessSystemConfig ? <span className="badge badge-success">Sim</span> : <span className="badge badge-danger">Não</span>}</td>
+                  <td>{r.canAccessInventory ? <span className="badge badge-success">Sim</span> : <span className="badge badge-danger">Não</span>}</td>
                 </tr>
               ))}
             </tbody>
@@ -167,7 +169,7 @@ export default function Operators() {
                   <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
                 </div>
                 <div className="form-group">
-                  <label>Usuario *</label>
+                  <label>Usuário *</label>
                   <input value={form.username} onChange={e => setForm({...form, username: e.target.value})} disabled={!!editUser} />
                 </div>
                 <div className="form-group">
@@ -190,11 +192,11 @@ export default function Operators() {
                   <input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
                 </div>
                 <div className="form-group">
-                  <label>Email</label>
+                  <label>E-mail</label>
                   <input value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
                 </div>
                 <div className="form-group">
-                  <label>Situacao</label>
+                  <label>Situação</label>
                   <select value={form.active} onChange={e => setForm({...form, active: e.target.value === 'true'})}>
                     <option value="true">Ativo</option>
                     <option value="false">Inativo</option>

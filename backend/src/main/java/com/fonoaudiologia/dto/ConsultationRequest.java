@@ -4,6 +4,7 @@ public class ConsultationRequest {
     private Long id;
     private Long patientId;
     private Long professionalId;
+    private Long unitId;
     private String type;
     private String status;
     private String chiefComplaint;
@@ -21,6 +22,8 @@ public class ConsultationRequest {
     public void setPatientId(Long patientId) { this.patientId = patientId; }
     public Long getProfessionalId() { return professionalId; }
     public void setProfessionalId(Long professionalId) { this.professionalId = professionalId; }
+    public Long getUnitId() { return unitId; }
+    public void setUnitId(Long unitId) { this.unitId = unitId; }
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }
     public String getStatus() { return status; }

@@ -13,37 +13,44 @@ export default function Agendamentos() {
   const [appointments, setAppointments] = useState([]);
   const [patients, setPatients] = useState([]);
   const [professionals, setProfessionals] = useState([]);
+  const [units, setUnits] = useState([]);
   const [availableSlots, setAvailableSlots] = useState([]);
   const [selectedDate, setSelectedDate] = useState('');
+  const [selectedUnit, setSelectedUnit] = useState('');
   const [searchFilter, setSearchFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(0);
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [form, setForm] = useState({
-    patientId: '', professionalId: '', scheduleSlotId: '', date: '', time: '08:00', type: 'CONSULTA', observations: '',
+    patientId: '', professionalId: '', scheduleSlotId: '', unitId: '', date: '', time: '08:00', type: 'CONSULTA', observations: '',
   });
 
   useEffect(() => { setPage(0); }, [selectedDate, searchFilter, statusFilter]);
-  useEffect(() => { loadData(); }, [selectedDate]);
+  useEffect(() => { loadData(); }, [selectedDate, selectedUnit]);
 
   const loadData = async () => {
     try {
-      const params = selectedDate ? { startDate: selectedDate, endDate: selectedDate } : {};
-      const [aptsRes, patientsRes, profsRes] = await Promise.all([
+      const params = {};
+      if (selectedDate) { params.startDate = selectedDate; params.endDate = selectedDate; }
+      if (selectedUnit) params.unitId = selectedUnit;
+      const [aptsRes, patientsRes, profsRes, unitsRes] = await Promise.all([
         api.get('/appointments', { params }),
         api.get('/patients'),
         api.get('/users'),
+        api.get('/service-units'),
       ]);
       setAppointments(aptsRes.data);
       setPatients(patientsRes.data);
       setProfessionals(profsRes.data.filter(u => u.roleName === 'FONOAUDIOLOGO' || u.roleName === 'PROFISSIONAL'));
+      setUnits(unitsRes.data);
     } catch { toast.error('Erro ao carregar'); }
   };
 
-  const loadSlotsForDate = async (date) => {
+  const loadSlotsForDate = async (date, unitId) => {
     try {
-      const res = await api.get(`/schedule-slots/date/${date}`);
+      const params = unitId ? { unitId } : {};
+      const res = await api.get(`/schedule-slots/date/${date}`, { params });
       const slotsWithAvail = await Promise.all(res.data.map(async s => {
         try {
           const avail = await api.get(`/schedule-slots/${s.id}/availability`, { params: { date } });
@@ -70,8 +77,8 @@ export default function Agendamentos() {
 
   const openNew = () => {
     setEditItem(null);
-    setForm({ patientId: '', professionalId: '', scheduleSlotId: '', date: selectedDate, time: '08:00', type: 'CONSULTA', observations: '' });
-    loadSlotsForDate(selectedDate);
+    setForm({ patientId: '', professionalId: '', scheduleSlotId: '', unitId: selectedUnit || '', date: selectedDate, time: '08:00', type: 'CONSULTA', observations: '' });
+    if (selectedDate && selectedUnit) loadSlotsForDate(selectedDate, selectedUnit);
     setShowForm(true);
   };
 
@@ -80,15 +87,21 @@ export default function Agendamentos() {
     setForm({
       patientId: a.patient?.id || '', professionalId: a.professional?.id || '',
       scheduleSlotId: a.scheduleSlot?.id || '',
+      unitId: a.unit?.id || (a.scheduleSlot?.unit?.id) || '',
       date: a.date || '', time: a.time || '08:00', type: a.type || 'CONSULTA', observations: a.observations || '',
     });
-    if (a.date) loadSlotsForDate(a.date);
+    if (a.date) loadSlotsForDate(a.date, a.unit?.id || a.scheduleSlot?.unit?.id || '');
     setShowForm(true);
   };
 
   const handleDateChangeInForm = (date) => {
     setForm(f => ({ ...f, date, scheduleSlotId: '', professionalId: '' }));
-    loadSlotsForDate(date);
+    loadSlotsForDate(date, form.unitId);
+  };
+
+  const handleUnitChangeInForm = (unitId) => {
+    setForm(f => ({ ...f, unitId, scheduleSlotId: '', professionalId: '' }));
+    if (form.date) loadSlotsForDate(form.date, unitId);
   };
 
   const handleSlotSelect = (slot) => {
@@ -96,17 +109,18 @@ export default function Agendamentos() {
   };
 
   const handleSave = async () => {
-    if (!form.patientId || !form.date || !form.time) {
+    if (!form.patientId || !form.date || !form.time || !form.unitId) {
       toast.warning('Preencha os campos obrigatorios');
       return;
     }
     if (form.scheduleSlotId && !form.professionalId) {
-      toast.warning('Selecione um horario valido');
+      toast.warning('Selecione um horário válido');
       return;
     }
     try {
       const payload = {
         patientId: Number(form.patientId),
+        unitId: Number(form.unitId),
         date: form.date, time: form.time, type: form.type, observations: form.observations,
       };
       if (form.professionalId) payload.professionalId = Number(form.professionalId);
@@ -151,6 +165,11 @@ export default function Agendamentos() {
         <div style={{ display: 'flex', gap: 12, marginBottom: 14, flexShrink: 0, alignItems: 'center' }}>
           <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)}
             style={{ padding: '8px 12px', border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, fontFamily: 'inherit', width: 150 }} />
+          <select value={selectedUnit} onChange={e => setSelectedUnit(e.target.value)}
+            style={{ padding: '8px 12px', border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, fontFamily: 'inherit', background: 'white', width: 200 }}>
+            <option value="">Todas as Unidades</option>
+            {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
           <div style={{ flex: 1 }}>
             <input placeholder="Filtrar por paciente, profissional ou tipo..." value={searchFilter}
               onChange={e => setSearchFilter(e.target.value)}
@@ -172,13 +191,14 @@ export default function Agendamentos() {
             <div className="scroll-container" style={{ flex: 1 }}>
               <table>
                 <thead>
-                  <tr><th>Data</th><th>Horario</th><th>Paciente</th><th>Profissional</th><th>Tipo</th><th>Status</th><th>Obs</th><th>Acoes</th></tr>
+                  <tr><th>Data</th><th>Horário</th><th>Unidade</th><th>Paciente</th><th>Profissional</th><th>Tipo</th><th>Status</th><th>Obs</th><th>Ações</th></tr>
                 </thead>
                 <tbody>
                   {paged.map(a => (
                     <tr key={a.id}>
                       <td style={{ whiteSpace: 'nowrap' }}>{a.date ? new Date(a.date + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}</td>
                       <td style={{ whiteSpace: 'nowrap', fontWeight: 600 }}>{a.time}</td>
+                      <td>{a.unit?.name || a.scheduleSlot?.unit?.name || '-'}</td>
                       <td>{a.patient?.name}</td>
                       <td>{a.professional?.name}</td>
                       <td>{a.type}</td>
@@ -196,7 +216,7 @@ export default function Agendamentos() {
                       </td>
                     </tr>
                   ))}
-                  {filtered.length === 0 && <tr><td colSpan={8} className="empty-state" style={{ padding: 40 }}>Nenhum agendamento encontrado</td></tr>}
+                  {filtered.length === 0 && <tr><td colSpan={9} className="empty-state" style={{ padding: 40 }}>Nenhum agendamento encontrado</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -207,7 +227,7 @@ export default function Agendamentos() {
 
       {showForm && (
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 560 }}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>{editItem ? 'Editar Agendamento' : 'Novo Agendamento'}</h3>
               <button className="modal-close" onClick={() => setShowForm(false)}>&times;</button>
@@ -219,6 +239,13 @@ export default function Agendamentos() {
                   <input type="date" value={form.date} onChange={e => handleDateChangeInForm(e.target.value)} />
                 </div>
                 <div className="form-group required">
+                  <label>Unidade de Atendimento</label>
+                  <select value={form.unitId} onChange={e => handleUnitChangeInForm(e.target.value)}>
+                    <option value="">Selecione...</option>
+                    {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  </select>
+                </div>
+                <div className="form-group required">
                   <label>Paciente</label>
                   <select value={form.patientId} onChange={e => setForm({ ...form, patientId: e.target.value })}>
                     <option value="">Selecione...</option>
@@ -227,12 +254,12 @@ export default function Agendamentos() {
                 </div>
               </div>
 
-              {form.date && (
+              {form.date && form.unitId && (
                 <div style={{ marginTop: 12 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 8 }}>Horarios Disponiveis</label>
+                  <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 8 }}>Horários Disponíveis</label>
                   {availableSlots.length === 0 ? (
                     <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, border: '1.5px dashed var(--border)', borderRadius: 'var(--radius-sm)' }}>
-                      Nenhum horario disponivel para esta data. Cadastre horarios na aba Horarios.
+                      Nenhum horário disponível para esta unidade e data. Cadastre horários na aba Horários.
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -264,7 +291,7 @@ export default function Agendamentos() {
               {selectedSlot && (
                 <div className="form-grid" style={{ marginTop: 12 }}>
                   <div className="form-group required">
-                    <label>Horario</label>
+                    <label>Horário</label>
                     <input type="time" value={form.time} onChange={e => setForm({ ...form, time: e.target.value })}
                       min={selectedSlot.startTime} max={selectedSlot.endTime} />
                   </div>
@@ -273,13 +300,13 @@ export default function Agendamentos() {
                     <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
                       <option value="CONSULTA">Consulta</option>
                       <option value="RETORNO">Retorno</option>
-                      <option value="AVALIACAO">Avaliacao</option>
+                      <option value="AVALIACAO">Avaliação</option>
                     </select>
                   </div>
                   <div className="form-group full-width">
-                    <label>Observacoes</label>
+                    <label>Observações</label>
                     <textarea rows={2} value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })}
-                      placeholder="Observacoes sobre o agendamento..." />
+                      placeholder="Observações sobre o agendamento..." />
                   </div>
                 </div>
               )}

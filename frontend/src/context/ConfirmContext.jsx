@@ -29,15 +29,15 @@ export function ConfirmProvider({ children }) {
     <ConfirmContext.Provider value={confirm}>
       {children}
       {confirmState && (
-        <div className="modal-overlay" onClick={handleCancel}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
+        <div className="confirm-overlay" onClick={handleCancel}>
+          <div className="confirm-modal" onClick={e => e.stopPropagation()}>
+            <div className="confirm-header">
               <h3>{confirmState.title}</h3>
             </div>
-            <div className="modal-body">
+            <div className="confirm-body">
               <p>{confirmState.message}</p>
             </div>
-            <div className="modal-footer">
+            <div className="confirm-footer">
               <button className="btn btn-secondary" onClick={handleCancel}>Cancelar</button>
               <button className="btn btn-danger" onClick={handleConfirm}>Confirmar</button>
             </div>

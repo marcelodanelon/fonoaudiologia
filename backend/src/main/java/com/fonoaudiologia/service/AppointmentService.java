@@ -4,10 +4,12 @@ import com.fonoaudiologia.dto.AppointmentRequest;
 import com.fonoaudiologia.entity.Appointment;
 import com.fonoaudiologia.entity.Patient;
 import com.fonoaudiologia.entity.ScheduleSlot;
+import com.fonoaudiologia.entity.ServiceUnit;
 import com.fonoaudiologia.entity.User;
 import com.fonoaudiologia.repository.AppointmentRepository;
 import com.fonoaudiologia.repository.PatientRepository;
 import com.fonoaudiologia.repository.ScheduleSlotRepository;
+import com.fonoaudiologia.repository.ServiceUnitRepository;
 import com.fonoaudiologia.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
@@ -22,13 +24,16 @@ public class AppointmentService {
     private final PatientRepository patientRepository;
     private final UserRepository userRepository;
     private final ScheduleSlotRepository scheduleSlotRepository;
+    private final ServiceUnitRepository unitRepository;
 
     public AppointmentService(AppointmentRepository repository, PatientRepository patientRepository,
-                              UserRepository userRepository, ScheduleSlotRepository scheduleSlotRepository) {
+                              UserRepository userRepository, ScheduleSlotRepository scheduleSlotRepository,
+                              ServiceUnitRepository unitRepository) {
         this.repository = repository;
         this.patientRepository = patientRepository;
         this.userRepository = userRepository;
         this.scheduleSlotRepository = scheduleSlotRepository;
+        this.unitRepository = unitRepository;
     }
 
     public List<Appointment> findAll() {
@@ -39,9 +44,17 @@ public class AppointmentService {
         return repository.findByDateOrderByTimeAsc(date);
     }
 
+    public List<Appointment> findByUnitAndDate(Long unitId, LocalDate date) {
+        return repository.findByUnitIdAndDateOrderByTimeAsc(unitId, date);
+    }
+
     public List<Appointment> findScheduledByDate(LocalDate date) {
         return repository.findByStatusInAndDate(
                 Arrays.asList("AGENDADO"), date);
+    }
+
+    public List<Appointment> findScheduledByUnitAndDate(Long unitId, LocalDate date) {
+        return repository.findByUnitIdAndStatusInAndDate(unitId, Arrays.asList("AGENDADO"), date);
     }
 
     public List<Appointment> findByPatient(Long patientId) {
@@ -50,14 +63,14 @@ public class AppointmentService {
 
     public Appointment findById(Long id) {
         return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Agendamento nao encontrado"));
+                .orElseThrow(() -> new RuntimeException("Agendamento não encontrado"));
     }
 
     public Appointment create(AppointmentRequest request) {
         Patient patient = patientRepository.findById(request.getPatientId())
-                .orElseThrow(() -> new RuntimeException("Paciente nao encontrado"));
+                .orElseThrow(() -> new RuntimeException("Paciente não encontrado"));
         User professional = userRepository.findById(request.getProfessionalId())
-                .orElseThrow(() -> new RuntimeException("Profissional nao encontrado"));
+                .orElseThrow(() -> new RuntimeException("Profissional não encontrado"));
 
         Appointment appointment = new Appointment();
         appointment.setPatient(patient);
@@ -70,16 +83,16 @@ public class AppointmentService {
 
         if (request.getScheduleSlotId() != null) {
             ScheduleSlot slot = scheduleSlotRepository.findById(request.getScheduleSlotId())
-                    .orElseThrow(() -> new RuntimeException("Horario nao encontrado"));
+                    .orElseThrow(() -> new RuntimeException("Horário não encontrado"));
 
             LocalDate aptDate = LocalDate.parse(request.getDate());
             if (aptDate.isBefore(slot.getStartDate()) || aptDate.isAfter(slot.getEndDate())) {
-                throw new RuntimeException("Data do agendamento fora do periodo do horario selecionado");
+                throw new RuntimeException("Data do agendamento fora do período do horário selecionado");
             }
 
             String aptDow = aptDate.getDayOfWeek().toString();
             if (!slot.getWeekdays().contains(aptDow)) {
-                throw new RuntimeException("O dia selecionado nao faz parte dos dias do horario");
+                throw new RuntimeException("O dia selecionado não faz parte dos dias do horário");
             }
 
             int occupied = 0;
@@ -91,13 +104,20 @@ public class AppointmentService {
             }
 
             if (occupied >= slot.getCapacity()) {
-                throw new RuntimeException("Este horario nao possui vagas disponiveis para esta data");
+                throw new RuntimeException("Este horário não possui vagas disponíveis para esta data");
             }
 
             appointment.setScheduleSlot(slot);
+            appointment.setUnit(slot.getUnit());
             if (appointment.getProfessional() == null) {
                 appointment.setProfessional(slot.getProfessional());
             }
+        }
+
+        if (request.getUnitId() != null && appointment.getUnit() == null) {
+            ServiceUnit unit = unitRepository.findById(request.getUnitId())
+                    .orElseThrow(() -> new RuntimeException("Unidade de atendimento não encontrada"));
+            appointment.setUnit(unit);
         }
 
         return repository.save(appointment);
@@ -107,18 +127,24 @@ public class AppointmentService {
         Appointment appointment = findById(id);
         if (request.getPatientId() != null) {
             Patient patient = patientRepository.findById(request.getPatientId())
-                    .orElseThrow(() -> new RuntimeException("Paciente nao encontrado"));
+                    .orElseThrow(() -> new RuntimeException("Paciente não encontrado"));
             appointment.setPatient(patient);
         }
         if (request.getProfessionalId() != null) {
             User professional = userRepository.findById(request.getProfessionalId())
-                    .orElseThrow(() -> new RuntimeException("Profissional nao encontrado"));
+                    .orElseThrow(() -> new RuntimeException("Profissional não encontrado"));
             appointment.setProfessional(professional);
         }
         if (request.getScheduleSlotId() != null) {
             ScheduleSlot slot = scheduleSlotRepository.findById(request.getScheduleSlotId())
-                    .orElseThrow(() -> new RuntimeException("Horario nao encontrado"));
+                    .orElseThrow(() -> new RuntimeException("Horário não encontrado"));
             appointment.setScheduleSlot(slot);
+            appointment.setUnit(slot.getUnit());
+        }
+        if (request.getUnitId() != null) {
+            ServiceUnit unit = unitRepository.findById(request.getUnitId())
+                    .orElseThrow(() -> new RuntimeException("Unidade de atendimento não encontrada"));
+            appointment.setUnit(unit);
         }
         if (request.getDate() != null) appointment.setDate(LocalDate.parse(request.getDate()));
         if (request.getTime() != null) appointment.setTime(request.getTime());

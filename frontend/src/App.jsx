@@ -15,6 +15,10 @@ import AuditLog from './pages/AuditLog';
 import Reports from './pages/Reports';
 import Horarios from './pages/Horarios';
 import Agendamentos from './pages/Agendamentos';
+import ServiceUnits from './pages/ServiceUnits';
+import Insumos from './pages/Insumos';
+import Entradas from './pages/Entradas';
+import Saidas from './pages/Saidas';
 
 function ProtectedRoute({ children, permission }) {
   const { token, hasPermission } = useAuth();
@@ -46,6 +50,11 @@ function AppRoutes() {
       <Route path="/agendamentos" element={<ProtectedRoute permission="consultation"><Agendamentos /></ProtectedRoute>} />
       <Route path="/pacientes" element={<ProtectedRoute permission="patients"><PatientHistory /></ProtectedRoute>} />
       <Route path="/operadores" element={<ProtectedRoute permission="operators"><Operators /></ProtectedRoute>} />
+      <Route path="/unidades" element={<ProtectedRoute permission="systemConfig"><ServiceUnits /></ProtectedRoute>} />
+      <Route path="/estoque/insumos" element={<ProtectedRoute permission="inventory"><Insumos /></ProtectedRoute>} />
+      <Route path="/estoque/entradas" element={<ProtectedRoute permission="inventory"><Entradas /></ProtectedRoute>} />
+      <Route path="/estoque/saidas" element={<ProtectedRoute permission="inventory"><Saidas /></ProtectedRoute>} />
+      <Route path="/estoque" element={<Navigate to="/estoque/insumos" />} />
       <Route path="/configuracoes" element={<ProtectedRoute permission="systemConfig"><SystemConfig /></ProtectedRoute>} />
       <Route path="/auditoria" element={<ProtectedRoute permission="auditLog"><AuditLog /></ProtectedRoute>} />
       <Route path="/relatorios/pacientes" element={<ProtectedRoute permission="consultation"><Reports type="patients" /></ProtectedRoute>} />

@@ -65,10 +65,11 @@ public class PatientController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id, HttpServletRequest httpRequest) {
         try {
+            Patient patient = patientService.findById(id);
             patientService.delete(id);
             auditService.log("DELETE", "PATIENT", id,
-                    "Paciente desativado", httpRequest.getRemoteAddr());
-            return ResponseEntity.ok(new java.util.HashMap<String, Object>() {{ put("message", "Paciente desativado com sucesso"); }});
+                    "Paciente excluído: " + patient.getName(), httpRequest.getRemoteAddr());
+            return ResponseEntity.ok(new java.util.HashMap<String, Object>() {{ put("message", "Paciente excluído com sucesso"); }});
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(new java.util.HashMap<String, Object>() {{ put("message", e.getMessage()); }});
         }

@@ -39,15 +39,16 @@ public class ConsultationController {
     @GetMapping
     public ResponseEntity<?> getAll(
             @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate) {
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) Long unitId) {
         try {
             List<Consultation> list;
-            if (startDate != null || endDate != null) {
-                java.time.LocalDateTime start = startDate != null ? java.time.LocalDate.parse(startDate).atStartOfDay() : java.time.LocalDateTime.of(2000, 1, 1, 0, 0);
-                java.time.LocalDateTime end = endDate != null ? java.time.LocalDate.parse(endDate).atTime(23, 59, 59) : java.time.LocalDateTime.now().plusYears(1);
-                list = consultationRepository.findByCreatedAtBetween(start, end);
+            java.time.LocalDateTime start = startDate != null ? java.time.LocalDate.parse(startDate).atStartOfDay() : java.time.LocalDateTime.of(2000, 1, 1, 0, 0);
+            java.time.LocalDateTime end = endDate != null ? java.time.LocalDate.parse(endDate).atTime(23, 59, 59) : java.time.LocalDateTime.now().plusYears(1);
+            if (unitId != null) {
+                list = consultationRepository.findByUnitIdAndCreatedAtBetween(unitId, start, end);
             } else {
-                list = consultationRepository.findAll();
+                list = consultationRepository.findByCreatedAtBetween(start, end);
             }
             return ResponseEntity.ok(list);
         } catch (Exception e) {
@@ -146,11 +147,11 @@ public class ConsultationController {
                 if (patientPhone != null && !patientPhone.isEmpty()) html.append("<div class='info-row'><span class='info-label'>Telefone:</span><span class='info-value'>").append(patientPhone).append("</span></div>");
                 if (patientBirthDate != null) html.append("<div class='info-row'><span class='info-label'>Nascimento:</span><span class='info-value'>").append(patientBirthDate).append("</span></div>");
             } else {
-                html.append("<div class='info-row'><span class='info-value'>Paciente nao informado</span></div>");
+                html.append("<div class='info-row'><span class='info-value'>Paciente não informado</span></div>");
             }
             html.append("</div>");
 
-            html.append("<div class='info-box'><h3>Informacoes do Atendimento</h3>");
+            html.append("<div class='info-box'><h3>Informações do Atendimento</h3>");
             if (professionalName != null) {
                 html.append("<div class='info-row'><span class='info-label'>Profissional:</span><span class='info-value'>").append(professionalName).append("</span></div>");
             }
@@ -170,11 +171,11 @@ public class ConsultationController {
             String[][] sections = {
                 {"Queixa Principal", c.getChiefComplaint()},
                 {"Anamnese", c.getAnamnesis()},
-                {"Historico Clinico", c.getClinicalHistory()},
+                {"Histórico Clinico", c.getClinicalHistory()},
                 {"Exame Fisico", c.getPhysicalExam()},
-                {"Diagnostico", c.getDiagnosis()},
+                {"Diagnóstico", c.getDiagnosis()},
                 {"Conduta / Plano de Tratamento", c.getConduct()},
-                {"Observacoes", c.getObservations()}
+                {"Observações", c.getObservations()}
             };
 
             for (String[] section : sections) {
@@ -196,7 +197,7 @@ public class ConsultationController {
                     html.append("</h2></div><div class='card-body'>");
 
                     html.append("<table class='audiogram-table'>");
-                    html.append("<thead><tr><th>Frequencia</th><th>250 Hz</th><th>500 Hz</th><th>1000 Hz</th><th>2000 Hz</th><th>3000 Hz</th><th>4000 Hz</th><th>6000 Hz</th><th>8000 Hz</th></tr></thead><tbody>");
+                    html.append("<thead><tr><th>Frequência</th><th>250 Hz</th><th>500 Hz</th><th>1000 Hz</th><th>2000 Hz</th><th>3000 Hz</th><th>4000 Hz</th><th>6000 Hz</th><th>8000 Hz</th></tr></thead><tbody>");
                     html.append("<tr><td style='font-weight:600;'>OD (Direita)</td>");
                     html.append("<td>").append(aud.getRight250() != null ? aud.getRight250() : "-").append("</td>");
                     html.append("<td>").append(aud.getRight500() != null ? aud.getRight500() : "-").append("</td>");
@@ -218,7 +219,7 @@ public class ConsultationController {
                     html.append("</tbody></table>");
 
                     if (aud.getObservations() != null && !aud.getObservations().trim().isEmpty()) {
-                        html.append("<div style='margin-top:10px;'><div style='font-weight:600;font-size:12px;color:#444;margin-bottom:4px;'>Observacoes do Audiograma:</div>");
+                        html.append("<div style='margin-top:10px;'><div style='font-weight:600;font-size:12px;color:#444;margin-bottom:4px;'>Observações do Audiograma:</div>");
                         html.append("<div style='font-size:13px;'>").append(aud.getObservations()).append("</div></div>");
                     }
                     html.append("</div></div>");
@@ -268,6 +269,12 @@ public class ConsultationController {
                 fieldChange.put("old", old.getProfessional().getId());
                 fieldChange.put("new", request.getProfessionalId());
                 changes.set("professionalId", fieldChange);
+            }
+            if (request.getUnitId() != null && (old.getUnit() == null || !request.getUnitId().equals(old.getUnit().getId()))) {
+                ObjectNode fieldChange = mapper.createObjectNode();
+                fieldChange.put("old", old.getUnit() != null ? old.getUnit().getId() : null);
+                fieldChange.put("new", request.getUnitId());
+                changes.set("unitId", fieldChange);
             }
             if (request.getChiefComplaint() != null && !request.getChiefComplaint().equals(old.getChiefComplaint())) {
                 ObjectNode fieldChange = mapper.createObjectNode();

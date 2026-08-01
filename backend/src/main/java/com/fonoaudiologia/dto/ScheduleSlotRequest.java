@@ -2,6 +2,7 @@ package com.fonoaudiologia.dto;
 
 public class ScheduleSlotRequest {
     private Long professionalId;
+    private Long unitId;
     private String startDate;
     private String endDate;
     private String weekdays;
@@ -11,6 +12,8 @@ public class ScheduleSlotRequest {
 
     public Long getProfessionalId() { return professionalId; }
     public void setProfessionalId(Long professionalId) { this.professionalId = professionalId; }
+    public Long getUnitId() { return unitId; }
+    public void setUnitId(Long unitId) { this.unitId = unitId; }
     public String getStartDate() { return startDate; }
     public void setStartDate(String startDate) { this.startDate = startDate; }
     public String getEndDate() { return endDate; }

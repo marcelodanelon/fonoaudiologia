@@ -23,11 +23,15 @@ public class AppointmentController {
     @GetMapping
     public ResponseEntity<List<Appointment>> findAll(
             @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate) {
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) Long unitId) {
         if (startDate != null && endDate != null) {
             LocalDate start = LocalDate.parse(startDate);
             LocalDate end = LocalDate.parse(endDate);
             if (start.equals(end)) {
+                if (unitId != null) {
+                    return ResponseEntity.ok(service.findByUnitAndDate(unitId, start));
+                }
                 return ResponseEntity.ok(service.findByDate(start));
             }
         }
@@ -35,7 +39,11 @@ public class AppointmentController {
     }
 
     @GetMapping("/scheduled/{date}")
-    public ResponseEntity<List<Appointment>> findScheduledByDate(@PathVariable String date) {
+    public ResponseEntity<List<Appointment>> findScheduledByDate(@PathVariable String date,
+                                                                  @RequestParam(required = false) Long unitId) {
+        if (unitId != null) {
+            return ResponseEntity.ok(service.findScheduledByUnitAndDate(unitId, LocalDate.parse(date)));
+        }
         return ResponseEntity.ok(service.findScheduledByDate(LocalDate.parse(date)));
     }
 

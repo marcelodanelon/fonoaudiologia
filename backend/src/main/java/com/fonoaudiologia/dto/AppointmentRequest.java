@@ -4,6 +4,7 @@ public class AppointmentRequest {
     private Long patientId;
     private Long professionalId;
     private Long scheduleSlotId;
+    private Long unitId;
     private String date;
     private String time;
     private String type;
@@ -16,6 +17,8 @@ public class AppointmentRequest {
     public void setProfessionalId(Long professionalId) { this.professionalId = professionalId; }
     public Long getScheduleSlotId() { return scheduleSlotId; }
     public void setScheduleSlotId(Long scheduleSlotId) { this.scheduleSlotId = scheduleSlotId; }
+    public Long getUnitId() { return unitId; }
+    public void setUnitId(Long unitId) { this.unitId = unitId; }
     public String getDate() { return date; }
     public void setDate(String date) { this.date = date; }
     public String getTime() { return time; }

@@ -37,14 +37,14 @@ public class AudiogramService {
 
     public Audiogram findById(Long id) {
         return audiogramRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Audiograma nao encontrado"));
+                .orElseThrow(() -> new RuntimeException("Audiograma não encontrado"));
     }
 
     public Audiogram create(AudiogramRequest request, Long professionalId) {
         Consultation consultation = consultationRepository.findById(request.getConsultationId())
-                .orElseThrow(() -> new RuntimeException("Consulta nao encontrada"));
+                .orElseThrow(() -> new RuntimeException("Consulta não encontrada"));
         User professional = userRepository.findById(professionalId)
-                .orElseThrow(() -> new RuntimeException("Profissional nao encontrado"));
+                .orElseThrow(() -> new RuntimeException("Profissional não encontrado"));
 
         Audiogram audiogram = new Audiogram();
         audiogram.setConsultation(consultation);
@@ -56,7 +56,7 @@ public class AudiogramService {
 
     public Audiogram update(Long id, AudiogramRequest request) {
         Audiogram audiogram = audiogramRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Audiograma nao encontrado"));
+                .orElseThrow(() -> new RuntimeException("Audiograma não encontrado"));
         mapRequestToEntity(request, audiogram);
         return audiogramRepository.save(audiogram);
     }

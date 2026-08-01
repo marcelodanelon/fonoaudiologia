@@ -81,7 +81,7 @@ export default function Dashboard() {
             </div>
             <div className="stat-info">
               <div className="value">{stats.consultationsThisMonth}</div>
-              <div className="label">Consultas Este Mes</div>
+              <div className="label">Consultas Este Mês</div>
             </div>
           </div>
           <div className="stat-card">
@@ -90,7 +90,7 @@ export default function Dashboard() {
             </div>
             <div className="stat-info">
               <div className="value">{stats.pendingReception}</div>
-              <div className="label">Recepcoes Pendentes</div>
+              <div className="label">Recepções Pendentes</div>
             </div>
           </div>
         </div>
@@ -99,7 +99,7 @@ export default function Dashboard() {
       {stats && stats.monthlyData && stats.monthlyData.length > 0 && (
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
-            <h3>Atendimentos por Mes</h3>
+            <h3>Atendimentos por Mês</h3>
           </div>
           <div className="card-body">
             <div className="bar-chart">
@@ -121,7 +121,7 @@ export default function Dashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, flex: 1, minHeight: 0 }}>
         <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
           <div className="card-header">
-            <h3>Recepcao Hoje</h3>
+            <h3>Recepção Hoje</h3>
           </div>
           <div className="card-body" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             <div className="stats-grid" style={{ marginBottom: 0, flex: 1, alignItems: 'center' }}>
@@ -168,7 +168,7 @@ export default function Dashboard() {
                   <tr><td>Total de Pacientes</td><td style={{ textAlign: 'right', fontWeight: 700, fontSize: 15 }}>{data.totalPatients}</td></tr>
                   <tr><td>Consultas Concluidas</td><td style={{ textAlign: 'right', fontWeight: 700, fontSize: 15 }}>{data.completedConsultations}</td></tr>
                   <tr><td>Consultas Agendadas</td><td style={{ textAlign: 'right', fontWeight: 700, fontSize: 15 }}>{data.scheduledConsultations}</td></tr>
-                  <tr><td>Total de Recepcoes</td><td style={{ textAlign: 'right', fontWeight: 700, fontSize: 15 }}>{data.totalReceptions}</td></tr>
+                  <tr><td>Total de Recepções</td><td style={{ textAlign: 'right', fontWeight: 700, fontSize: 15 }}>{data.totalReceptions}</td></tr>
                   <tr><td>Operadores Ativos</td><td style={{ textAlign: 'right', fontWeight: 700, fontSize: 15 }}>{data.totalOperators}</td></tr>
                 </tbody>
               </table>

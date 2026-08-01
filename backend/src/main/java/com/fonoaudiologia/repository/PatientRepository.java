@@ -6,7 +6,9 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.List;
 
 public interface PatientRepository extends JpaRepository<Patient, Long> {
-    @Query("SELECT p FROM Patient p WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')) OR p.cpf LIKE CONCAT('%', :search, '%') OR p.phone LIKE CONCAT('%', :search, '%')")
+    List<Patient> findAllByOrderByNameAsc();
+
+    @Query("SELECT p FROM Patient p WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')) OR p.cpf LIKE CONCAT('%', :search, '%') OR p.phone LIKE CONCAT('%', :search, '%') ORDER BY p.name ASC")
     List<Patient> search(String search);
 
     long countByActiveTrue();

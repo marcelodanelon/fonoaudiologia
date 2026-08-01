@@ -23,6 +23,10 @@ public class Consultation {
     @JoinColumn(name = "operator_id")
     private User operator;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "unit_id")
+    private ServiceUnit unit;
+
     @Column(nullable = false)
     private String type; // CONSULTA, RETORNO, AVALIACAO
 
@@ -33,17 +37,17 @@ public class Consultation {
 
     private String anamnesis; // Anamnese
 
-    private String clinicalHistory; // Historico clinico
+    private String clinicalHistory; // Histórico clinico
 
     private String physicalExam; // Exame fisico
 
-    private String diagnosis; // Diagnostico
+    private String diagnosis; // Diagnóstico
 
     private String conduct; // Conduta
 
-    private String observations; // Observacoes gerais
+    private String observations; // Observações gerais
 
-    private Long receptionRecordId; // Origem da recepcao (nullable)
+    private Long receptionRecordId; // Origem da recepção (nullable)
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -65,6 +69,8 @@ public class Consultation {
     public void setProfessional(User professional) { this.professional = professional; }
     public User getOperator() { return operator; }
     public void setOperator(User operator) { this.operator = operator; }
+    public ServiceUnit getUnit() { return unit; }
+    public void setUnit(ServiceUnit unit) { this.unit = unit; }
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }
     public String getStatus() { return status; }

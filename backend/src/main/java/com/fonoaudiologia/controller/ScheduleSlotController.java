@@ -21,12 +21,19 @@ public class ScheduleSlotController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ScheduleSlot>> findAll() {
+    public ResponseEntity<List<ScheduleSlot>> findAll(@RequestParam(required = false) Long unitId) {
+        if (unitId != null) {
+            return ResponseEntity.ok(service.findByUnit(unitId));
+        }
         return ResponseEntity.ok(service.findAll());
     }
 
     @GetMapping("/date/{date}")
-    public ResponseEntity<List<ScheduleSlot>> findByDate(@PathVariable String date) {
+    public ResponseEntity<List<ScheduleSlot>> findByDate(@PathVariable String date,
+                                                          @RequestParam(required = false) Long unitId) {
+        if (unitId != null) {
+            return ResponseEntity.ok(service.findForUnitAndDate(unitId, LocalDate.parse(date)));
+        }
         return ResponseEntity.ok(service.findForDate(LocalDate.parse(date)));
     }
 
@@ -82,7 +89,7 @@ public class ScheduleSlotController {
     public ResponseEntity<?> delete(@PathVariable Long id) {
         try {
             service.delete(id);
-            return ResponseEntity.ok(new HashMap<String, String>() {{ put("message", "Horario removido"); }});
+            return ResponseEntity.ok(new HashMap<String, String>() {{ put("message", "Horário removido"); }});
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(new HashMap<String, Object>() {{ put("message", e.getMessage()); }});
         }

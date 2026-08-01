@@ -164,7 +164,7 @@ export default function AudiogramChart({ data, onChange, ear, disabled, observat
         </div>
 
         <div className="form-group" style={{ marginTop: 8, marginBottom: 0 }}>
-          <label style={{ fontSize: 11 }}>Observacoes</label>
+          <label style={{ fontSize: 11 }}>Observações</label>
           <textarea rows={4} value={observations || ''}
             onChange={e => onObservationsChange(e.target.value)} disabled={disabled}
             style={{ fontSize: 11, padding: '6px 8px' }} />

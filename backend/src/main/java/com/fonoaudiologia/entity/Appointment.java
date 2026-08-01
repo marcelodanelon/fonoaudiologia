@@ -24,6 +24,10 @@ public class Appointment {
     @JoinColumn(name = "schedule_slot_id")
     private ScheduleSlot scheduleSlot;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "unit_id")
+    private ServiceUnit unit;
+
     @Column(nullable = false)
     private LocalDate date;
 
@@ -58,6 +62,8 @@ public class Appointment {
     public void setProfessional(User professional) { this.professional = professional; }
     public ScheduleSlot getScheduleSlot() { return scheduleSlot; }
     public void setScheduleSlot(ScheduleSlot scheduleSlot) { this.scheduleSlot = scheduleSlot; }
+    public ServiceUnit getUnit() { return unit; }
+    public void setUnit(ServiceUnit unit) { this.unit = unit; }
     public LocalDate getDate() { return date; }
     public void setDate(LocalDate date) { this.date = date; }
     public String getTime() { return time; }

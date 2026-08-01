@@ -52,8 +52,8 @@ function PatientsReport({ onPrint, onSetPrintHtml }) {
 
   const print = () => {
     const rows = filtered.map(p => `<tr><td>${p.name||''}</td><td>${p.cpf||'-'}</td><td>${p.phone||'-'}</td><td>${p.email||'-'}</td><td>${p.city||'-'}</td><td>${p.active?'Ativo':'Inativo'}</td></tr>`).join('');
-    onSetPrintHtml(openPrintWindow('Relatorio de Pacientes',
-      `<table><thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Email</th><th>Cidade</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`,
+    onSetPrintHtml(openPrintWindow('Relatório de Pacientes',
+      `<table><thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>E-mail</th><th>Cidade</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`,
       new Date().toLocaleDateString('pt-BR'), filtered.length));
   };
 
@@ -71,7 +71,7 @@ function PatientsReport({ onPrint, onSetPrintHtml }) {
         <div className="card-body" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <div className="scroll-container" style={{ flex: 1 }}>
             <table>
-              <thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Email</th><th>Cidade</th><th>Status</th></tr></thead>
+              <thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>E-mail</th><th>Cidade</th><th>Status</th></tr></thead>
               <tbody>
                 {paged.map(p => (
                   <tr key={p.id}>
@@ -125,8 +125,8 @@ function ConsultationsReport({ onPrint, onSetPrintHtml }) {
   };
 
   const print = () => {
-    const rows = filtered.map(c => `<tr><td>${new Date(c.createdAt).toLocaleString('pt-BR')}</td><td>${c.patient?.name||''}</td><td>${c.professional?.name||''}</td><td>${c.type||''}</td><td>${statusLabel(c.status)}</td><td>${c.receptionRecordId?'Recepcao':'Direto'}</td></tr>`).join('');
-    onSetPrintHtml(openPrintWindow('Relatorio de Atendimentos',
+    const rows = filtered.map(c => `<tr><td>${new Date(c.createdAt).toLocaleString('pt-BR')}</td><td>${c.patient?.name||''}</td><td>${c.professional?.name||''}</td><td>${c.type||''}</td><td>${statusLabel(c.status)}</td><td>${c.receptionRecordId?'Recepção':'Direto'}</td></tr>`).join('');
+    onSetPrintHtml(openPrintWindow('Relatório de Atendimentos',
       `<table><thead><tr><th>Data</th><th>Paciente</th><th>Profissional</th><th>Tipo</th><th>Status</th><th>Origem</th></tr></thead><tbody>${rows}</tbody></table>`,
       new Date().toLocaleDateString('pt-BR'), filtered.length));
   };
@@ -147,7 +147,7 @@ function ConsultationsReport({ onPrint, onSetPrintHtml }) {
         <div className="card-body" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <div className="scroll-container" style={{ flex: 1 }}>
             <table>
-              <thead><tr><th>Data</th><th>Paciente</th><th>Profissional</th><th>Tipo</th><th>Status</th><th>Origem</th><th>Acoes</th></tr></thead>
+              <thead><tr><th>Data</th><th>Paciente</th><th>Profissional</th><th>Tipo</th><th>Status</th><th>Origem</th><th>Ações</th></tr></thead>
               <tbody>
                 {paged.map(c => (
                   <tr key={c.id}>
@@ -156,7 +156,7 @@ function ConsultationsReport({ onPrint, onSetPrintHtml }) {
                     <td>{c.professional?.name}</td>
                     <td>{c.type}</td>
                     <td>{statusBadge(c.status)}</td>
-                    <td>{c.receptionRecordId ? <span className="badge badge-purple">Recepcao</span> : <span className="badge badge-secondary">Direto</span>}</td>
+                    <td>{c.receptionRecordId ? <span className="badge badge-purple">Recepção</span> : <span className="badge badge-secondary">Direto</span>}</td>
                     <td>
                       <button className="btn btn-primary btn-sm" onClick={async () => { try { const res = await api.get(`/consultations/${c.id}/report`); onSetPrintHtml(res.data); } catch {} }}>
                         Laudo
@@ -207,8 +207,8 @@ function ReceptionsReport({ onPrint, onSetPrintHtml }) {
 
   const print = () => {
     const rows = filtered.map(r => `<tr><td>${new Date(r.createdAt).toLocaleString('pt-BR')}</td><td>${r.patient?.name||''}</td><td>${r.patient?.cpf||'-'}</td><td>${statusLabel(r.status)}</td><td>${r.observations||'-'}</td></tr>`).join('');
-    onSetPrintHtml(openPrintWindow('Relatorio de Recepcoes',
-      `<table><thead><tr><th>Data Check-in</th><th>Paciente</th><th>CPF</th><th>Status</th><th>Observacoes</th></tr></thead><tbody>${rows}</tbody></table>`,
+    onSetPrintHtml(openPrintWindow('Relatório de Recepções',
+      `<table><thead><tr><th>Data Check-in</th><th>Paciente</th><th>CPF</th><th>Status</th><th>Observações</th></tr></thead><tbody>${rows}</tbody></table>`,
       new Date().toLocaleDateString('pt-BR'), filtered.length));
   };
 
@@ -228,7 +228,7 @@ function ReceptionsReport({ onPrint, onSetPrintHtml }) {
         <div className="card-body" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <div className="scroll-container" style={{ flex: 1 }}>
             <table>
-              <thead><tr><th>Data Check-in</th><th>Paciente</th><th>CPF</th><th>Status</th><th>Observacoes</th></tr></thead>
+              <thead><tr><th>Data Check-in</th><th>Paciente</th><th>CPF</th><th>Status</th><th>Observações</th></tr></thead>
               <tbody>
                 {paged.map(r => (
                   <tr key={r.id}>
@@ -239,7 +239,7 @@ function ReceptionsReport({ onPrint, onSetPrintHtml }) {
                     <td>{r.observations || '-'}</td>
                   </tr>
                 ))}
-                {filtered.length === 0 && <tr><td colSpan={5} className="empty-state" style={{ padding: 40 }}>Nenhum registro de recepcao encontrado para esta data</td></tr>}
+                {filtered.length === 0 && <tr><td colSpan={5} className="empty-state" style={{ padding: 40 }}>Nenhum registro de recepção encontrado para esta data</td></tr>}
               </tbody>
             </table>
           </div>
@@ -255,7 +255,7 @@ export default function Reports({ type = 'patients' }) {
   const [printModalHtml, setPrintModalHtml] = useState(null);
   const ReportMap = { patients: PatientsReport, consultations: ConsultationsReport, receptions: ReceptionsReport };
   const Component = ReportMap[type] || PatientsReport;
-  const titleMap = { patients: 'Relatorio de Pacientes', consultations: 'Relatorio de Atendimentos', receptions: 'Relatorio de Recepcoes' };
+  const titleMap = { patients: 'Relatório de Pacientes', consultations: 'Relatório de Atendimentos', receptions: 'Relatório de Recepções' };
 
   return (
     <div className="page-full">

@@ -4,10 +4,12 @@ import com.fonoaudiologia.dto.ReceptionRequest;
 import com.fonoaudiologia.entity.Appointment;
 import com.fonoaudiologia.entity.Patient;
 import com.fonoaudiologia.entity.ReceptionRecord;
+import com.fonoaudiologia.entity.ServiceUnit;
 import com.fonoaudiologia.entity.User;
 import com.fonoaudiologia.repository.AppointmentRepository;
 import com.fonoaudiologia.repository.PatientRepository;
 import com.fonoaudiologia.repository.ReceptionRecordRepository;
+import com.fonoaudiologia.repository.ServiceUnitRepository;
 import com.fonoaudiologia.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
@@ -20,14 +22,17 @@ public class ReceptionService {
     private final ReceptionRecordRepository receptionRepository;
     private final PatientRepository patientRepository;
     private final UserRepository userRepository;
+    private final ServiceUnitRepository unitRepository;
     private final AppointmentRepository appointmentRepository;
 
     public ReceptionService(ReceptionRecordRepository receptionRepository,
                             PatientRepository patientRepository, UserRepository userRepository,
+                            ServiceUnitRepository unitRepository,
                             AppointmentRepository appointmentRepository) {
         this.receptionRepository = receptionRepository;
         this.patientRepository = patientRepository;
         this.userRepository = userRepository;
+        this.unitRepository = unitRepository;
         this.appointmentRepository = appointmentRepository;
     }
 
@@ -37,10 +42,17 @@ public class ReceptionService {
 
     public ReceptionRecord create(ReceptionRequest request, Long operatorId) {
         User operator = userRepository.findById(operatorId)
-                .orElseThrow(() -> new RuntimeException("Operador nao encontrado"));
+                .orElseThrow(() -> new RuntimeException("Operador não encontrado"));
+
+        if (request.getUnitId() == null) {
+            throw new RuntimeException("A unidade de atendimento é obrigatória");
+        }
+        ServiceUnit unit = unitRepository.findById(request.getUnitId())
+                .orElseThrow(() -> new RuntimeException("Unidade de atendimento não encontrada"));
 
         ReceptionRecord record = new ReceptionRecord();
         record.setOperator(operator);
+        record.setUnit(unit);
         record.setType(request.getType());
         record.setContactType(request.getContactType());
         record.setNotes(request.getNotes());
@@ -48,7 +60,7 @@ public class ReceptionService {
 
         if (request.getPatientId() != null) {
             Patient patient = patientRepository.findById(request.getPatientId())
-                    .orElseThrow(() -> new RuntimeException("Paciente nao encontrado"));
+                    .orElseThrow(() -> new RuntimeException("Paciente não encontrado"));
             record.setPatient(patient);
 
             if ("CHECKIN".equals(request.getType())) {

@@ -25,6 +25,7 @@ public class DataInitializer implements CommandLineRunner {
     private final AudiogramRepository audiogramRepository;
     private final AppointmentRepository appointmentRepository;
     private final ScheduleSlotRepository scheduleSlotRepository;
+    private final ServiceUnitRepository serviceUnitRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DataInitializer(RoleRepository roleRepository, UserRepository userRepository,
@@ -34,6 +35,7 @@ public class DataInitializer implements CommandLineRunner {
                            AudiogramRepository audiogramRepository,
                            AppointmentRepository appointmentRepository,
                            ScheduleSlotRepository scheduleSlotRepository,
+                           ServiceUnitRepository serviceUnitRepository,
                            PasswordEncoder passwordEncoder) {
         this.roleRepository = roleRepository;
         this.userRepository = userRepository;
@@ -44,18 +46,20 @@ public class DataInitializer implements CommandLineRunner {
         this.audiogramRepository = audiogramRepository;
         this.appointmentRepository = appointmentRepository;
         this.scheduleSlotRepository = scheduleSlotRepository;
+        this.serviceUnitRepository = serviceUnitRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
     @Override
     public void run(String... args) {
+        ensurePermissions();
         if (userRepository.count() > 0) {
             return;
         }
 
         Role adminRole = roleRepository.save(Role.admin());
         Role recepRole = roleRepository.save(Role.recepcionista());
-        Role fonoRole = roleRepository.save(Role.fonoaudiologo());
+        Role fonoRole = roleRepository.save(Role.fonoaudiólogo());
 
         String adminPass = System.getenv("ADMIN_PASSWORD");
         String recepPass = System.getenv("RECEPCIONISTA_PASSWORD");
@@ -70,19 +74,45 @@ public class DataInitializer implements CommandLineRunner {
         userRepository.save(admin);
 
         User recepcionista = new User("recepcionista", passwordEncoder.encode(recepPass),
-                "Maria Recepcao", "recep@fono.com", "111.111.111-11", "(11)98888-1111", recepRole);
+                "Maria Recepção", "recep@fono.com", "111.111.111-11", "(11)98888-1111", recepRole);
         userRepository.save(recepcionista);
 
-        User fono = new User("fonoaudiologo", passwordEncoder.encode(fonoPass),
+        User fono = new User("fonoaudiólogo", passwordEncoder.encode(fonoPass),
                 "Dr. Joao Fono", "fono@fono.com", "222.222.222-22", "(11)97777-2222", fonoRole);
         userRepository.save(fono);
 
         configRepository.save(new SystemConfig("session_timeout_minutes", "30",
                 "Tempo de inatividade em minutos antes do logout automatico"));
-        configRepository.save(new SystemConfig("clinic_name", "Clinica Fonoaudiologia",
-                "Nome da clinica exibido no sistema"));
+        configRepository.save(new SystemConfig("clinic_name", "Clínica Fonoaudiologia",
+                "Nome da clínica exibido no sistema"));
         configRepository.save(new SystemConfig("reception_poll_interval", "10000",
-                "Intervalo em milissegundos para verificar novos pacientes na recepcao"));
+                "Intervalo em milissegundos para verificar novos pacientes na recepção"));
+
+        if (serviceUnitRepository.count() == 0) {
+            ServiceUnit unit = new ServiceUnit();
+            unit.setName("Unidade Central");
+            unit.setAddress("Rua das Flores, 123 - Centro");
+            unit.setPhone("(11) 3456-7890");
+            unit.setActive(true);
+            serviceUnitRepository.save(unit);
+        }
+    }
+
+    private void ensurePermissions() {
+        roleRepository.findAll().forEach(role -> {
+            if ("ADMINISTRADOR".equals(role.getName())) {
+                boolean changed = false;
+                if (!role.isCanAccessDashboard()) { role.setCanAccessDashboard(true); changed = true; }
+                if (!role.isCanAccessReception()) { role.setCanAccessReception(true); changed = true; }
+                if (!role.isCanAccessConsultation()) { role.setCanAccessConsultation(true); changed = true; }
+                if (!role.isCanAccessPatients()) { role.setCanAccessPatients(true); changed = true; }
+                if (!role.isCanAccessOperators()) { role.setCanAccessOperators(true); changed = true; }
+                if (!role.isCanAccessAuditLog()) { role.setCanAccessAuditLog(true); changed = true; }
+                if (!role.isCanAccessSystemConfig()) { role.setCanAccessSystemConfig(true); changed = true; }
+                if (!role.isCanAccessInventory()) { role.setCanAccessInventory(true); changed = true; }
+                if (changed) roleRepository.save(role);
+            }
+        });
     }
 
     private void seedTestData(User admin, User recepcionista, User fono) {
@@ -103,6 +133,7 @@ public class DataInitializer implements CommandLineRunner {
 
         ScheduleSlot slot1 = new ScheduleSlot();
         slot1.setProfessional(fono);
+        slot1.setUnit(defaultUnit());
         slot1.setStartDate(today.minusDays(3));
         slot1.setEndDate(today.plusDays(5));
         slot1.setWeekdays("MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY");
@@ -114,6 +145,7 @@ public class DataInitializer implements CommandLineRunner {
 
         ScheduleSlot slot2 = new ScheduleSlot();
         slot2.setProfessional(fono);
+        slot2.setUnit(defaultUnit());
         slot2.setStartDate(today.minusDays(3));
         slot2.setEndDate(today.plusDays(5));
         slot2.setWeekdays("MONDAY,WEDNESDAY,FRIDAY");
@@ -138,21 +170,33 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
+    private ServiceUnit defaultUnit() {
+        ServiceUnit unit = serviceUnitRepository.findByActiveTrueOrderByNameAsc().stream()
+                .findFirst().orElse(null);
+        if (unit == null) {
+            unit = new ServiceUnit();
+            unit.setName("Unidade Central");
+            unit.setActive(true);
+            unit = serviceUnitRepository.save(unit);
+        }
+        return unit;
+    }
+
     private List<Patient> createPatients() {
         String[][] data = {
-            {"Maria Silva",        "321.546.870-00", "RG-1234561", "1985-03-15", "(11)99123-4567", "(11)3456-7890", "maria.silva@email.com",      "Rua das Flores, 123",        "Sao Paulo",      "SP"},
-            {"Joao Santos",        "842.139.670-50", "RG-2345672", "1978-07-22", "(11)98234-5678", null,            "joao.santos@email.com",      "Av. Paulista, 1000",          "Sao Paulo",      "SP"},
+            {"Maria Silva",        "321.546.870-00", "RG-1234561", "1985-03-15", "(11)99123-4567", "(11)3456-7890", "maria.silva@email.com",      "Rua das Flores, 123",        "São Paulo",      "SP"},
+            {"Joao Santos",        "842.139.670-50", "RG-2345672", "1978-07-22", "(11)98234-5678", null,            "joao.santos@email.com",      "Av. Paulista, 1000",          "São Paulo",      "SP"},
             {"Ana Oliveira",       "513.278.490-30", "RG-3456783", "1990-11-08", "(19)97345-6789", "(19)3234-5678", "ana.oliveira@email.com",     "Rua Barao, 456",              "Campinas",       "SP"},
             {"Pedro Costa",        "174.902.380-60", "RG-4567894", "1965-01-30", "(11)96456-7890", null,            null,                          "Rua da Paz, 789",             "Guarulhos",      "SP"},
-            {"Luciana Lima",       "698.305.710-20", "RG-5678905", "1982-05-17", "(11)95567-8901", "(11)3567-8901", "luciana.lima@email.com",     "Av. Brasil, 2000",             "Sao Paulo",      "SP"},
+            {"Luciana Lima",       "698.305.710-20", "RG-5678905", "1982-05-17", "(11)95567-8901", "(11)3567-8901", "luciana.lima@email.com",     "Av. Brasil, 2000",             "São Paulo",      "SP"},
             {"Fernando Souza",     "285.741.030-90", "RG-6789016", "1973-09-03", "(19)94678-9012", null,            "fernando.souza@email.com",   "Rua Treze de Maio, 300",      "Campinas",       "SP"},
-            {"Camila Ferreira",    "430.862.150-70", "RG-7890127", "1995-12-25", "(11)93789-0123", "(11)3678-0123", null,                          "Rua XV de Novembro, 500",     "Sao Paulo",      "SP"},
+            {"Camila Ferreira",    "430.862.150-70", "RG-7890127", "1995-12-25", "(11)93789-0123", "(11)3678-0123", null,                          "Rua XV de Novembro, 500",     "São Paulo",      "SP"},
             {"Rafael Almeida",     "961.207.450-80", "RG-8901238", "1988-04-12", "(11)92890-1234", null,            "rafael.almeida@email.com",   "Av. Getulio Vargas, 800",     "Guarulhos",      "SP"},
             {"Juliana Pereira",    "374.581.920-10", "RG-9012349", "1992-08-19", "(13)91901-2345", "(13)3456-1234", "juliana.pereira@email.com",  "Rua XV de Novembro, 150",     "Santos",         "SP"},
-            {"Marcos Ribeiro",     "608.123.570-40", "RG-0123450", "1970-06-08", "(11)90012-3456", null,            null,                          "Rua da Consolacao, 1200",     "Sao Paulo",      "SP"},
+            {"Marcos Ribeiro",     "608.123.570-40", "RG-0123450", "1970-06-08", "(11)90012-3456", null,            null,                          "Rua da Consolação, 1200",     "São Paulo",      "SP"},
             {"Beatriz Rodrigues",  "125.479.830-60", "RG-1122331", "1998-02-14", "(19)98123-4567", null,            "beatriz.rodrigues@email.com", "Rua Jose Paulino, 250",       "Campinas",       "SP"},
-            {"Lucas Martins",      "793.056.240-80", "RG-2233442", "1980-10-01", "(11)97234-5678", "(11)3789-4567", null,                          "Rua Vergueiro, 3000",         "Sao Paulo",      "SP"},
-            {"Priscila Araujo",    "462.398.510-30", "RG-3344553", "1987-07-28", "(11)96345-6789", null,            "priscila.araujo@email.com",  "Av. Reboucas, 1500",          "Sao Paulo",      "SP"},
+            {"Lucas Martins",      "793.056.240-80", "RG-2233442", "1980-10-01", "(11)97234-5678", "(11)3789-4567", null,                          "Rua Vergueiro, 3000",         "São Paulo",      "SP"},
+            {"Priscila Araujo",    "462.398.510-30", "RG-3344553", "1987-07-28", "(11)96345-6789", null,            "priscila.araujo@email.com",  "Av. Reboucas, 1500",          "São Paulo",      "SP"},
             {"Thiago Gomes",       "831.672.040-90", "RG-4455664", "1993-03-05", "(19)95456-7890", "(19)3567-8901", null,                          "Rua Barao de Jaguara, 900",   "Campinas",       "SP"},
             {"Isabela Barbosa",    "547.283.190-50", "RG-5566775", "1976-11-20", "(11)94567-8901", null,            "isabela.barbosa@email.com",  "Rua Coronel Oliveira Lima, 400", "Sao Caetano do Sul", "SP"}
         };
@@ -180,141 +224,141 @@ public class DataInitializer implements CommandLineRunner {
 
     private List<Consultation> createConsultations(List<Patient> patients, User admin, User fono, Random rng) {
         String[] chiefComplaints = {
-            "Dificuldade de audicao em ambientes ruidosos",
+            "Dificuldade de audição em ambientes ruidosos",
             "Zumbido no ouvido esquerdo",
             "Dor de ouvido recorrente",
-            "Alteracao na fala da crianca",
-            "Avaliacao pre-cirurgica",
-            "Perda de audicao subita",
-            "Sensacao de ouvido tampado",
+            "Alteração na fala da criança",
+            "Avaliação pre-cirúrgica",
+            "Perda de audição súbita",
+            "Sensação de ouvido tampado",
             "Dificuldade de concentração em sala de aula",
             "Zumbido bilateral persistente",
-            "Otite recorrente na infancia",
-            "Avaliacao audiologica para admissao",
-            "Mudanca na qualidade da voz",
-            "Sensacao de excesso de cera no ouvido",
+            "Otite recorrente na infância",
+            "Avaliação audiológica para admissao",
+            "Mudança na qualidade da voz",
+            "Sensação de excesso de cera no ouvido",
             "Dificuldade para ouvir TV em volume alto",
-            "Avaliacao de adaptacao de AASI",
-            "Queixa de otite media cronica",
-            "Retorno para reavaliacao audiologica",
-            "Dificuldade de fala em criancas",
-            "Acompanhamento pos-cirurgico otologico",
-            "Avaliacao para implante coclear"
+            "Avaliação de adaptação de AASI",
+            "Queixa de otite média crônica",
+            "Retorno para reavaliação audiológica",
+            "Dificuldade de fala em crianças",
+            "Acompanhamento pós-cirúrgico otológico",
+            "Avaliação para implante coclear"
         };
 
         String[] anamneses = {
-            "Paciente relata dificuldade de audicao ha 6 meses, especialmente em locais com muito barulho. Nega uso de protetores auditivos no trabalho.",
-            "Relata zumbido constante no ouvido esquerdo ha 3 meses, de intensidade moderada, piorando ao final do dia.",
-            "Paciente com historico de dor de ouvido desde a infancia, com episodios mais frequentes nos ultimos 2 meses.",
-            "Pais relatam que a crianca de 4 anos nao responde quando chamada e apresenta atraso na fala em relacao a crianca da mesma idade.",
-            "Paciente agendado para avaliacao audiologica completa previa a procedimento cirurgico de timpanoplastia.",
-            "Paciente relata perda audicao subita no ouvido direito ha 2 semanas, sem causa aparente.",
-            "Sensacao de ouvido tampado ha 1 mes, associada a sensacao de pressao e leve diminuicao da audicao.",
-            "Professora relata que o aluno de 8 anos tem dificuldade de concentracao na sala de aula e pede para sentar na frente.",
-            "Paciente relata zumbido bilateral ha 1 ano, com piora progressiva, associado a exposicao ocupacional a ruido.",
-            "Adulto com historico de otites recorrentes na infancia, agora com queixa de perda auditiva leve.",
-            "Candidato a emprego em empresa de seguranca, necessita avaliacao audiologica conforme ASO.",
-            "Paciente relata mudanca na qualidade da voz apos cirurgia de tireoide, com rouquidao persistente.",
-            "Paciente queixa-se de dificuldade para limpar cera do ouvido e sensacao de bloqueio auditivo.",
+            "Paciente relata dificuldade de audição há 6 meses, especialmente em locais com muito barulho. Nega uso de protetores auditivos no trabalho.",
+            "Relata zumbido constante no ouvido esquerdo há 3 meses, de intensidade moderada, piorando ao final do dia.",
+            "Paciente com histórico de dor de ouvido desde a infância, com episódios mais frequentes nos últimos 2 meses.",
+            "Pais relatam que a criança de 4 anos não responde quando chamada e apresenta atraso na fala em relação à criança da mesma idade.",
+            "Paciente agendado para avaliação audiológica completa prévia a procedimento cirúrgico de timpanoplastia.",
+            "Paciente relata perda de audição súbita no ouvido direito há 2 semanas, sem causa aparente.",
+            "Sensação de ouvido tampado há 1 mês, associada à sensação de pressão e leve diminuição da audição.",
+            "Professora relata que o aluno de 8 anos tem dificuldade de concentração na sala de aula e pede para sentar na frente.",
+            "Paciente relata zumbido bilateral há 1 ano, com piora progressiva, associado à exposição ocupacional ao ruído.",
+            "Adulto com histórico de otites recorrentes na infância, agora com queixa de perda auditiva leve.",
+            "Candidato a emprego em empresa de segurança, necessita avaliação audiológica conforme ASO.",
+            "Paciente relata mudança na qualidade da voz após cirurgia de tireoide, com rouquidão persistente.",
+            "Paciente queixa-se de dificuldade para limpar cera do ouvido e sensação de bloqueio auditivo.",
             "Idoso de 75 anos relata que familiares reclamam que assiste TV com volume excessivamente alto.",
-            "Paciente em uso de AASI ha 2 anos, retorna para avaliacao e ajuste do equipamento.",
-            "Adulto com historico de otite media cronica esquerda, em acompanhamento otorrinolaringologico.",
-            "Paciente retorna para nova avaliacao audiologica apos 6 meses de rehabilitacao auditiva.",
-            "Pais de crianca de 5 anos relatam que a mesma apresenta dificuldade na articulacao de palavras.",
-            "Adulto de 50 anos retorna para avaliacao pos-cirurgica de otosclerose.",
-            "Paciente encaminhado para avaliacao de implante coclear apos perda auditiva profunda bilateral."
+            "Paciente em uso de AASI há 2 anos, retorna para avaliação e ajuste do equipamento.",
+            "Adulto com histórico de otite média crônica esquerda, em acompanhamento otorrinolaringológico.",
+            "Paciente retorna para nova avaliação audiológica após 6 meses de reabilitação auditiva.",
+            "Pais de criança de 5 anos relatam que a mesma apresenta dificuldade na articulação de palavras.",
+            "Adulto de 50 anos retorna para avaliação pós-cirúrgica de otosclerose.",
+            "Paciente encaminhado para avaliação de implante coclear após perda auditiva profunda bilateral."
         };
 
         String[] clinicalHistories = {
-            "Hipertensao arterial controlada com medicacao. Nao relata alergias. Ex-cocaineiro por 15 anos.",
-            "Nega comorbidades. Trabalha como motorista de onibus ha 10 anos. Exposicao continua a ruido.",
-            "Historico familiar de perda auditiva. Mae e avo com presbicusie. Nao relata uso de ototoxicos.",
-            "Prematuro com 32 semanas, 1800g. Historico de internacao na UTI neonatal com uso de aminoglicosideos.",
-            "Historico de otite media cronica desde os 5 anos. Cirurgia de timpanoplastia no ouvido esquerdo em 2018.",
-            "Paciente com historico de trauma acustico agudo por exposicao a explosao em show musical.",
-            "Sinusite cronica associada a disfuncao tubaria. Faz uso de sprays nasais intermitentemente.",
-            "Aluno com diagnostico previo de TDAH em uso de metilfenidato. Historico familiar de problemas auditivos.",
-            "Trabalhador metalurgico com 20 anos de exposicao ocupacional a ruido intensos. Usa protetor auditivo parcialmente.",
-            "Paciente com historico de meningite na infancia, com suspeita de sequela auditiva bilaterally.",
-            "Paciente saudavel, sem comorbidades significativas. Apenas exame admissional de rotina.",
-            "Paciente em pos-operatorio de tireoidectomia total ha 3 meses. Recuperacao adequada.",
-            "Historico de cerume impactado recorrente. Realizou microscopia de ouvido por 2x nos ultimos 5 anos.",
-            "Idoso com presbicusie progressiva familiar. Uso de AASI bilateral ha 3 anos.",
-            "Paciente com otite media cronica com supuracao ativa ha 8 anos, em acompanhamento ORL.",
-            "Paciente em fase de rehabilitacao auditiva pos-cirurgica, com melhora progressiva da compreensao.",
-            "Crianca com historico de atraso no desenvolvimento da linguagem oral. Fonoaudiologia em andamento.",
-            "Adulto pos-cirurgia de otosclerose (estapedotomia) ha 1 ano, com resultado auditivo satisfatorio.",
-            "Paciente com perda auditiva progressiva bilateral nos ultimos 5 anos, piora significativa recentemente.",
-            "Historico de exposicao ocupacional a ruido e uso pregresso de ototoxicos (cisplatina)."
+            "Hipertensão arterial controlada com medicação. Não relata alergias. Ex-cocainômano por 15 anos.",
+            "Nega comorbidades. Trabalha como motorista de ônibus há 10 anos. Exposição contínua a ruído.",
+            "Histórico familiar de perda auditiva. Mãe e avó com presbiacusia. Não relata uso de ototóxicos.",
+            "Prematuro com 32 semanas, 1800g. Histórico de internação na UTI neonatal com uso de aminoglicosídeos.",
+            "Histórico de otite média crônica desde os 5 anos. Cirurgia de timpanoplastia no ouvido esquerdo em 2018.",
+            "Paciente com histórico de trauma acústico agudo por exposição a explosão em show musical.",
+            "Sinusite crônica associada à disfunção tubária. Faz uso de sprays nasais intermitentemente.",
+            "Aluno com diagnóstico previo de TDAH em uso de metilfenidato. Histórico familiar de problemas auditivos.",
+            "Trabalhador metalurgico com 20 anos de exposição ocupacional ao ruído intensos. Usa protetor auditivo parcialmente.",
+            "Paciente com histórico de meningite na infância, com suspeita de sequela auditiva bilateral.",
+            "Paciente saudável, sem comorbidades significativas. Apenas exame admissional de rotina.",
+            "Paciente em pós-operatório de tireoidectomia total há 3 meses. Recuperação adequada.",
+            "Histórico de cerúmen impactado recorrente. Realizou microscopia de ouvido por 2x nos últimos 5 anos.",
+            "Idoso com presbiacusia progressiva familiar. Uso de AASI bilateral há 3 anos.",
+            "Paciente com otite média crônica com supuração ativa há 8 anos, em acompanhamento ORL.",
+            "Paciente em fase de reabilitação auditiva pós-cirúrgica, com melhora progressiva da compreensão.",
+            "Criança com histórico de atraso no desenvolvimento da linguagem oral. Fonoaudiologia em andamento.",
+            "Adulto pós-cirurgia de otosclerose (estapedotomia) há 1 ano, com resultado auditivo satisfatório.",
+            "Paciente com perda auditiva progressiva bilateral nos últimos 5 anos, piora significativa recentemente.",
+            "Histórico de exposição ocupacional ao ruído e uso pregresso de ototóxicos (cisplatina)."
         };
 
         String[] physicalExams = {
-            "Otoscopia: Meato acustico externo livre, timpano intacto, reflexo de luz presente bilateral. Pavimento timpanico normal.",
-            "Otoscopia OD: Cerumen impactado obstruindo canal auditivo. OE: Normal com timpano translucido.",
-            "Otoscopia: Timpanos esclerosados bilateralmente, com retracao moderada e ausencia de reflexo de luz.",
-            "Avaliacao da fala: Articulacao de fonemas distorcida, especialmente /r/ e /s/. Vocabulario reduzido para a idade.",
-            "Otoscopia: Timpano com cicatriz central no OE. Canal auditivo externo normal bilateral.",
-            "Otoscopia bilateral normal. Reflexos acusticos presentes. Imitanciometria dentro da normalidade.",
-            "Otoscopia: Erameno amarelo-acinzentado em ambos os canais, sem impactacao significativa.",
-            "Avaliacao da fala e linguagem: Linguagem compreensiva adequada para a idade, expressiva com imaturidade fonologica.",
-            "Otoscopia: Timpanos com retracao tipo B1 bilateral e nivel de liquido nivel horizontal.",
-            "Otoscopia: Timpano cicatricial direito, restante do examen normal.",
-            "Otoscopia bilateral normal. CAE permeavel. Timpanos translucidos com reflexo de luz presente.",
-            "Palpacao de glandulas salivares: Sem alteracoes. Avaliacao da mobilidade da lingua e palato: normal.",
-            "Otoscopia: Presenca de cerumen amarelado no OE, canal parcialmente obstruido. OD normal.",
-            "Otoscopia bilateral: Timpanos esbranquecidos com perda de translucidez. Presbicusie compativel.",
-            "Otoscopia OE: Perfuracao central com supuracao mucopurulenta ativa. OD: Timpano normal.",
-            "Otoscopia: Pos-operatorio timpanoplastia OE com cicatrizacao evoluindo satisfatoriamente.",
-            "Avaliacao orofacial: Labio leporino reparado. Palato intacto. Fonação com escape nasal minimo.",
-            "Otoscopia: Membrana timpanica transparente bilateral. Ausculta com sonda de Seigle positiva bilateral.",
-            "Otoscopia: Placa timpanoesclerotica em posterossuperior OE. OD normal.",
-            "Otoscopia: Timpanos opacos bilateralmente com nivel de liquido-ares. Protese de transmissao no OE."
+            "Otoscopia: Meato acústico externo livre, tímpano intacto, reflexo de luz presente bilateral. Pavimento timpânico normal.",
+            "Otoscopia OD: Cerumen impactado obstruindo canal auditivo. OE: Normal com tímpano translúcido.",
+            "Otoscopia: Tímpanos esclerosados bilateralmente, com retração moderada e ausência de reflexo de luz.",
+            "Avaliação da fala: Articulação de fonemas distorcida, especialmente /r/ e /s/. Vocabulário reduzido para a idade.",
+            "Otoscopia: Tímpano com cicatriz central no OE. Canal auditivo externo normal bilateral.",
+            "Otoscopia bilateral normal. Reflexos acústicos presentes. Imitanciometria dentro da normalidade.",
+            "Otoscopia: Cerúmen amarelo-acinzentado em ambos os canais, sem impactação significativa.",
+            "Avaliação da fala e linguagem: Linguagem compreensiva adequada para a idade, expressiva com imaturidade fonológica.",
+            "Otoscopia: Tímpanos com retração tipo B1 bilateral e nível de líquido horizontal.",
+            "Otoscopia: Tímpano cicatricial direito, restante do exame normal.",
+            "Otoscopia bilateral normal. CAE permeavel. Tímpanos translucidos com reflexo de luz presente.",
+            "Palpação de glândulas salivares: Sem alterações. Avaliação da mobilidade da língua e palato: normal.",
+            "Otoscopia: Presença de cerumen amarelado no OE, canal parcialmente obstruído. OD normal.",
+            "Otoscopia bilateral: Tímpanos esbranquecidos com perda de translucidez. Presbiacusia compatível.",
+            "Otoscopia OE: Perfuração central com supuração mucopurulenta ativa. OD: Tímpano normal.",
+            "Otoscopia: Pós-operatório timpanoplastia OE com cicatrização evoluindo satisfatoriamente.",
+            "Avaliação orofacial: Labio leporino reparado. Palato intacto. Fonação com escape nasal mínimo.",
+            "Otoscopia: Membrana timpânica transparente bilateral. Ausculta com sonda de Seigle positiva bilateral.",
+            "Otoscopia: Placa timpanoesclerótica em póstero-superior OE. OD normal.",
+            "Otoscopia: Tímpanos opacos bilateralmente com nível de líquido-ar. Prótese de transmissão no OE."
         };
 
         String[] diagnoses = {
             "Perda auditiva neurosensorial leve bilateral",
-            "Condutiva unilateral direita por impactacao de cerume",
+            "Condutiva unilateral direita por impactação de cerúmen",
             "Perda auditiva condutiva bilateral por otosclerose",
             "Atraso no desenvolvimento da linguagem oral",
-            "Perda auditiva condutiva leve esquerda pos-timpanoplastia",
-            "Audicao dentro da normalidade",
-            "Diminuicao da acuidade auditiva por obstrucao do CAE",
-            "Imaturidade fonologica - alteracao da fala",
+            "Perda auditiva condutiva leve esquerda pós-timpanoplastia",
+            "Audição dentro da normalidade",
+            "Diminuição da acuidade auditiva por obstrução do CAE",
+            "Imaturidade fonológica - alteração da fala",
             "Perda auditiva mista bilateral leve a moderada",
             "Perda auditiva neurosensorial moderada direita",
-            "Audicao normal - apto para funcao que exige acuidade auditiva",
-            "Disfonia pos-tireoidectomia - paralisia de corda vocal",
-            "Cerume impactado bilateral",
-            "Presbicusie bilateral moderada",
-            "Otite media cronica com supuracao ativa esquerda",
-            "Perda auditiva neurosensorial leve - em reabilitacao",
-            "Atraso de linguagem oral com imaturidade fonologica",
-            "Otosclerose pos-estapedotomia - resultado satisfactory",
+            "Audição normal - apto para função que exige acuidade auditiva",
+            "Disfonia pós-tireoidectomia - paralisia de corda vocal",
+            "Cerúmen impactado bilateral",
+            "Presbiacusia bilateral moderada",
+            "Otite média crônica com supuração ativa esquerda",
+            "Perda auditiva neurosensorial leve - em reabilitação",
+            "Atraso de linguagem oral com imaturidade fonológica",
+            "Otosclerose pós-estapedotomia - resultado satisfatório",
             "Perda auditiva neurosensorial profunda bilateral",
             "Perda auditiva mista severa bilateral"
         };
 
         String[] conducts = {
-            "Reabilitacao auditiva com AASI bilateral. Retorno em 30 dias para reavaliacao.",
-            "Orientacao sobre higiene auditiva. Remocao de cerume. Retorno em 15 dias para verificacao.",
-            "Encaminhamento para otolaringologia para avaliacao cirurgica de otosclerose.",
-            "Encaminhamento para neurologia pediatrica e fonoaudiologia para reabilitacao da linguagem.",
-            "Acompanhamento pos-cirurgico. Ajuste de AASI se necessario. Retorno em 2 meses.",
-            "Paciente orientado sobre cuidados auditivos. Nenhuma conduta medica necessaria.",
-            "Orientacao sobre higiene dos ouvidos. Encaminhamento ao ORL para avaliacao da cera.",
-            "Intervencao fonoaudiologica em linguagem. Atividades de estimulacao em casa.",
+            "Reabilitação auditiva com AASI bilateral. Retorno em 30 dias para reavaliação.",
+            "Orientação sobre higiene auditiva. Remoção de cerúmen. Retorno em 15 dias para verificação.",
+            "Encaminhamento para otolaringologia para avaliação cirúrgica de otosclerose.",
+            "Encaminhamento para neurologia pediátrica e fonoaudiologia para reabilitação da linguagem.",
+            "Acompanhamento pós-cirúrgico. Ajuste de AASI se necessário. Retorno em 2 meses.",
+            "Paciente orientado sobre cuidados auditivos. Nenhuma conduta médica necessária.",
+            "Orientação sobre higiene dos ouvidos. Encaminhamento ao ORL para avaliação da cera.",
+            "Intervenção fonoaudiológica em linguagem. Atividades de estimulação em casa.",
             "AASI bilateral com moldes personalizados. Acompanhamento trimestral.",
             "AASI monaural direito. Reparo com AASI se perda progredir. Retorno em 6 meses.",
-            "Emissao emitida com resultado normal. Apto para a funcao pleiteada.",
-            "Terapia vocal e orientacao vocal. Repouso vocal relativo por 2 semanas.",
-            "Remocao de cerume com pinca e lavagem auricular. Orientacao sobre higiene.",
-            "AASI bilateral adaptado. Retorno em 1 mes para acolhimento e ajuste.",
+            "Emissão emitida com resultado normal. Apto para a função pleiteada.",
+            "Terapia vocal e orientação vocal. Repouso vocal relativo por 2 semanas.",
+            "Remoção de cerúmen com pinca e lavagem auricular. Orientação sobre higiene.",
+            "AASI bilateral adaptado. Retorno em 1 mês para acolhimento e ajuste.",
             "Tratamento com antibioticoterapia topica e oral. Retorno em 2 semanas.",
-            "Manutencao de AASI. Exercicios de treinamento auditivo. Retorno trimestral.",
-            "Atividades terapeuticas de linguagem 2x por semana. Reavaliacao em 6 meses.",
-            "Acompanhamento pos-operatorio com audiometria seriada a cada 3 meses.",
-            "Encaminhamento para avaliacao de implante coclear em centro de referencia.",
-            "Reabilitacao auditiva com AASI de alto ganho. Acompanhamento mensal."
+            "Manutenção de AASI. Exercícios de treinamento auditivo. Retorno trimestral.",
+            "Atividades terapêuticas de linguagem 2x por semana. Reavaliação em 6 meses.",
+            "Acompanhamento pós-operatório com audiometria seriada a cada 3 meses.",
+            "Encaminhamento para avaliação de implante coclear em centro de referência.",
+            "Reabilitação auditiva com AASI de alto ganho. Acompanhamento mensal."
         };
 
         String[] types = {"CONSULTA", "RETORNO", "AVALIACAO"};
@@ -375,7 +419,7 @@ public class DataInitializer implements CommandLineRunner {
                     break;
                 case "AGENDADA":
                     c.setChiefComplaint(chiefComplaints[i]);
-                    c.setObservations("Consulta agendada - aguardando confirmacao do paciente.");
+                    c.setObservations("Consulta agendada - aguardando confirmação do paciente.");
                     break;
                 case "CANCELADA":
                     c.setChiefComplaint(chiefComplaints[i]);
@@ -393,13 +437,13 @@ public class DataInitializer implements CommandLineRunner {
         LocalDateTime now = LocalDateTime.now();
         String[] notes = {
             "Paciente chegou para consulta agendada. Documentos verificados.",
-            "Paciente encaminhado pelo SUS para avaliacao audiologica.",
-            "Paciente ligou para remarcar consulta. Reagendado para proxima semana.",
-            "Paciente walk-in solicitando avaliacao de audicao.",
-            "Paciente compareceu para retorno. Ja encaminhado ao consultorio.",
-            "Paciente compareceu com encaminhamento medico para audiometria.",
-            "Paciente nao compareceu na hora marcada. Tentativa de contato por telefone.",
-            "Paciente chegou para adaptacao de AASI. Equipamento disponivel.",
+            "Paciente encaminhado pelo SUS para avaliação audiológica.",
+            "Paciente ligou para remarcar consulta. Reagendado para próxima semana.",
+            "Paciente walk-in solicitando avaliação de audição.",
+            "Paciente compareceu para retorno. Já encaminhado ao consultório.",
+            "Paciente compareceu com encaminhamento médico para audiometria.",
+            "Paciente não compareceu na hora marcada. Tentativa de contato por telefone.",
+            "Paciente chegou para adaptação de AASI. Equipamento disponível.",
             "Paciente compareceu para primeira consulta. Cadastro atualizado.",
             "Paciente ligou informando que vai cancelar. Motivo: viagem de trabalho."
         };
@@ -420,7 +464,7 @@ public class DataInitializer implements CommandLineRunner {
 
             if (i < 3 && i < consultations.size()) {
                 r.setType("CHECKIN");
-                r.setNotes(notes[i] + " Consulta ja realizada.");
+                r.setNotes(notes[i] + " Consulta já realizada.");
             } else if (i < 4) {
                 r.setType("CHECKIN");
             } else if (i < 7) {
@@ -447,16 +491,16 @@ public class DataInitializer implements CommandLineRunner {
 
         LocalDateTime now = LocalDateTime.now();
         String[] obsNormal = {
-            "Audicao dentro dos limites normais para todas as frequencias.",
-            "Audiograma normal. Queixa nao confirmada por exame objetivo.",
-            "Audicao normal bilateral. Sugerida avaliacao complementar de processamento auditivo."
+            "Audição dentro dos limites normais para todas as frequências.",
+            "Audiograma normal. Queixa não confirmada por exame objetivo.",
+            "Audição normal bilateral. Sugerida avaliação complementar de processamento auditivo."
         };
         String[] obsNeuro = {
-            "Configuracao tipica de presbicusie. Perda leve em altas frequencias bilateral.",
-            "Perda neurosensorial moderada a severa com configuracao descendente bilateral."
+            "Configuração tipica de presbiacusia. Perda leve em altas frequências bilateral.",
+            "Perda neurosensorial moderada a severa com configuração descendente bilateral."
         };
         String[] obsCondutiva = {
-            "Perda condutiva bilateral leve a moderada. Configuracao plana sugestiva de otosclerose.",
+            "Perda condutiva bilateral leve a moderada. Configuração plana sugestiva de otosclerose.",
             "Perda condutiva unilateral direita. Complemento com timpanometria tipo A bilateral."
         };
         String[] obsMista = {
