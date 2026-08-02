@@ -4,16 +4,19 @@ import com.fonoaudiologia.dto.ConsultationRequest;
 import com.fonoaudiologia.entity.Appointment;
 import com.fonoaudiologia.entity.Consultation;
 import com.fonoaudiologia.entity.Patient;
+import com.fonoaudiologia.entity.ReceptionRecord;
 import com.fonoaudiologia.entity.ServiceUnit;
 import com.fonoaudiologia.entity.User;
 import com.fonoaudiologia.repository.AppointmentRepository;
 import com.fonoaudiologia.repository.ConsultationRepository;
 import com.fonoaudiologia.repository.PatientRepository;
+import com.fonoaudiologia.repository.ReceptionRecordRepository;
 import com.fonoaudiologia.repository.ServiceUnitRepository;
 import com.fonoaudiologia.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -24,16 +27,19 @@ public class ConsultationService {
     private final UserRepository userRepository;
     private final ServiceUnitRepository unitRepository;
     private final AppointmentRepository appointmentRepository;
+    private final ReceptionRecordRepository receptionRecordRepository;
 
     public ConsultationService(ConsultationRepository consultationRepository,
                                PatientRepository patientRepository, UserRepository userRepository,
                                ServiceUnitRepository unitRepository,
-                               AppointmentRepository appointmentRepository) {
+                               AppointmentRepository appointmentRepository,
+                               ReceptionRecordRepository receptionRecordRepository) {
         this.consultationRepository = consultationRepository;
         this.patientRepository = patientRepository;
         this.userRepository = userRepository;
         this.unitRepository = unitRepository;
         this.appointmentRepository = appointmentRepository;
+        this.receptionRecordRepository = receptionRecordRepository;
     }
 
     public List<Consultation> findAll() {
@@ -85,13 +91,35 @@ public class ConsultationService {
             consultation.setOperator(operator);
         }
 
+        LocalDate businessDate = resolveBusinessDate(request);
+        if (businessDate != null) {
+            consultation.setCreatedAt(businessDate.atTime(LocalTime.now()));
+        } else if (request.getDate() != null && !request.getDate().trim().isEmpty()) {
+            consultation.setCreatedAt(LocalDate.parse(request.getDate()).atTime(LocalTime.now()));
+        }
+
         Consultation saved = consultationRepository.save(consultation);
 
         if ("CONCLUIDA".equals(saved.getStatus()) && patient != null) {
-            updateAppointmentStatus(patient.getId(), "ATENDIDO");
+            updateAppointmentStatus(patient.getId(), "ATENDIDO", saved.getCreatedAt().toLocalDate());
         }
 
         return saved;
+    }
+
+    private LocalDate resolveBusinessDate(ConsultationRequest request) {
+        if (request.getReceptionRecordId() != null) {
+            return receptionRecordRepository.findById(request.getReceptionRecordId())
+                    .map(ReceptionRecord::getCreatedAt)
+                    .map(java.time.LocalDateTime::toLocalDate)
+                    .orElse(null);
+        }
+        if (request.getAppointmentId() != null) {
+            return appointmentRepository.findById(request.getAppointmentId())
+                    .map(Appointment::getDate)
+                    .orElse(null);
+        }
+        return null;
     }
 
     public Consultation update(Long id, ConsultationRequest request) {
@@ -126,15 +154,15 @@ public class ConsultationService {
         Consultation saved = consultationRepository.save(consultation);
 
         if ("CONCLUIDA".equals(saved.getStatus()) && saved.getPatient() != null) {
-            updateAppointmentStatus(saved.getPatient().getId(), "ATENDIDO");
+            updateAppointmentStatus(saved.getPatient().getId(), "ATENDIDO", saved.getCreatedAt().toLocalDate());
         }
 
         return saved;
     }
 
-    private void updateAppointmentStatus(Long patientId, String status) {
+    private void updateAppointmentStatus(Long patientId, String status, LocalDate date) {
         List<Appointment> appointments = appointmentRepository
-                .findByPatientIdAndDateAndStatusNot(patientId, LocalDate.now(), "CANCELADO");
+                .findByPatientIdAndDateAndStatusNot(patientId, date, "CANCELADO");
         for (Appointment apt : appointments) {
             if (!status.equals(apt.getStatus())) {
                 apt.setStatus(status);

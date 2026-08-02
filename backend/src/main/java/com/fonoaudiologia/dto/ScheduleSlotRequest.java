@@ -9,6 +9,8 @@ public class ScheduleSlotRequest {
     private String startTime;
     private String endTime;
     private Integer capacity;
+    private String slotType;
+    private Integer durationMinutes;
 
     public Long getProfessionalId() { return professionalId; }
     public void setProfessionalId(Long professionalId) { this.professionalId = professionalId; }
@@ -26,4 +28,8 @@ public class ScheduleSlotRequest {
     public void setEndTime(String endTime) { this.endTime = endTime; }
     public Integer getCapacity() { return capacity; }
     public void setCapacity(Integer capacity) { this.capacity = capacity; }
+    public String getSlotType() { return slotType; }
+    public void setSlotType(String slotType) { this.slotType = slotType; }
+    public Integer getDurationMinutes() { return durationMinutes; }
+    public void setDurationMinutes(Integer durationMinutes) { this.durationMinutes = durationMinutes; }
 }

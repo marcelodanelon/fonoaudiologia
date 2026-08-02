@@ -14,6 +14,7 @@ import com.fonoaudiologia.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -58,21 +59,40 @@ public class ReceptionService {
         record.setNotes(request.getNotes());
         record.setStatus("PENDENTE");
 
+        Appointment linkedAppointment = null;
+        if (request.getAppointmentId() != null) {
+            linkedAppointment = appointmentRepository.findById(request.getAppointmentId()).orElse(null);
+        }
+
         if (request.getPatientId() != null) {
             Patient patient = patientRepository.findById(request.getPatientId())
                     .orElseThrow(() -> new RuntimeException("Paciente não encontrado"));
             record.setPatient(patient);
 
             if ("CHECKIN".equals(request.getType())) {
-                List<Appointment> appointments = appointmentRepository
-                        .findByPatientIdAndDateAndStatusNot(patient.getId(), LocalDate.now(), "CANCELADO");
-                for (Appointment apt : appointments) {
-                    if ("AGENDADO".equals(apt.getStatus())) {
-                        apt.setStatus("RECEPCIONADO");
-                        appointmentRepository.save(apt);
+                if (linkedAppointment != null) {
+                    if ("AGENDADO".equals(linkedAppointment.getStatus())) {
+                        linkedAppointment.setStatus("RECEPCIONADO");
+                        appointmentRepository.save(linkedAppointment);
+                    }
+                } else {
+                    List<Appointment> appointments = appointmentRepository
+                            .findByPatientIdAndDateAndStatusNot(patient.getId(), LocalDate.now(), "CANCELADO");
+                    for (Appointment apt : appointments) {
+                        if ("AGENDADO".equals(apt.getStatus())) {
+                            apt.setStatus("RECEPCIONADO");
+                            appointmentRepository.save(apt);
+                        }
                     }
                 }
             }
+        }
+
+        if (linkedAppointment != null && linkedAppointment.getDate() != null) {
+            LocalTime time = linkedAppointment.getTime() != null
+                    ? LocalTime.parse(linkedAppointment.getTime())
+                    : LocalTime.NOON;
+            record.setCreatedAt(linkedAppointment.getDate().atTime(time));
         }
 
         return receptionRepository.save(record);

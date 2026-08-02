@@ -3,6 +3,8 @@ import api from '../api/axios';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import Pagination from '../components/Pagination';
+import PatientAutocomplete from '../components/PatientAutocomplete';
+import DateCalendar from '../components/DateCalendar';
 import { statusLabel } from '../utils/statusLabels';
 
 const PAGE_SIZE = 12;
@@ -15,6 +17,8 @@ export default function Agendamentos() {
   const [professionals, setProfessionals] = useState([]);
   const [units, setUnits] = useState([]);
   const [availableSlots, setAvailableSlots] = useState([]);
+  const [availableDates, setAvailableDates] = useState([]);
+  const [unitProfessionals, setUnitProfessionals] = useState([]);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedUnit, setSelectedUnit] = useState('');
   const [searchFilter, setSearchFilter] = useState('');
@@ -47,16 +51,25 @@ export default function Agendamentos() {
     } catch { toast.error('Erro ao carregar'); }
   };
 
-  const loadSlotsForDate = async (date, unitId) => {
+  const loadSlotsForDate = async (date, unitId, professionalId) => {
     try {
-      const params = unitId ? { unitId } : {};
+      const params = {};
+      if (unitId) params.unitId = unitId;
+      if (professionalId) params.professionalId = professionalId;
       const res = await api.get(`/schedule-slots/date/${date}`, { params });
       const slotsWithAvail = await Promise.all(res.data.map(async s => {
         try {
           const avail = await api.get(`/schedule-slots/${s.id}/availability`, { params: { date } });
-          return { ...s, remaining: avail.data.remaining, occupied: avail.data.occupied };
+          return {
+            ...s,
+            remaining: avail.data.remaining,
+            occupied: avail.data.occupied,
+            capacity: avail.data.capacity,
+            times: avail.data.times,
+            availableTimes: avail.data.availableTimes,
+          };
         } catch {
-          return { ...s, remaining: s.capacity, occupied: 0 };
+          return { ...s, remaining: s.slotType === 'TEMPO' ? (s.times?.length || 0) : s.capacity, occupied: 0 };
         }
       }));
       setAvailableSlots(slotsWithAvail);
@@ -77,39 +90,80 @@ export default function Agendamentos() {
 
   const openNew = () => {
     setEditItem(null);
-    setForm({ patientId: '', professionalId: '', scheduleSlotId: '', unitId: selectedUnit || '', date: selectedDate, time: '08:00', type: 'CONSULTA', observations: '' });
-    if (selectedDate && selectedUnit) loadSlotsForDate(selectedDate, selectedUnit);
+    setForm({ patientId: '', professionalId: '', scheduleSlotId: '', unitId: '', date: '', time: '08:00', type: 'CONSULTA', observations: '' });
+    setAvailableSlots([]);
+    setAvailableDates([]);
+    setUnitProfessionals([]);
     setShowForm(true);
   };
 
-  const openEdit = (a) => {
+  const openEdit = async (a) => {
     setEditItem(a);
+    const unitId = a.unit?.id || a.scheduleSlot?.unit?.id || '';
+    const professionalId = a.professional?.id || '';
     setForm({
-      patientId: a.patient?.id || '', professionalId: a.professional?.id || '',
+      patientId: a.patient?.id || '', professionalId,
       scheduleSlotId: a.scheduleSlot?.id || '',
-      unitId: a.unit?.id || (a.scheduleSlot?.unit?.id) || '',
-      date: a.date || '', time: a.time || '08:00', type: a.type || 'CONSULTA', observations: a.observations || '',
+      unitId, date: a.date || '', time: a.time || '08:00', type: a.type || 'CONSULTA', observations: a.observations || '',
     });
-    if (a.date) loadSlotsForDate(a.date, a.unit?.id || a.scheduleSlot?.unit?.id || '');
+    setAvailableDates(a.date ? [a.date] : []);
+    if (unitId) {
+      try {
+        const res = await api.get('/schedule-slots', { params: { unitId } });
+        const profMap = new Map();
+        res.data.forEach(s => { if (s.professional) profMap.set(s.professional.id, s.professional); });
+        setUnitProfessionals([...profMap.values()]);
+      } catch { setUnitProfessionals([]); }
+    } else {
+      setUnitProfessionals([]);
+    }
+    if (a.date) loadSlotsForDate(a.date, unitId, professionalId);
     setShowForm(true);
   };
 
   const handleDateChangeInForm = (date) => {
-    setForm(f => ({ ...f, date, scheduleSlotId: '', professionalId: '' }));
-    loadSlotsForDate(date, form.unitId);
+    setForm(f => ({ ...f, date, scheduleSlotId: '' }));
+    if (date) loadSlotsForDate(date, form.unitId, form.professionalId);
   };
 
-  const handleUnitChangeInForm = (unitId) => {
-    setForm(f => ({ ...f, unitId, scheduleSlotId: '', professionalId: '' }));
-    if (form.date) loadSlotsForDate(form.date, unitId);
+  const handleUnitChangeInForm = async (unitId) => {
+    setForm(f => ({ ...f, unitId, professionalId: '', scheduleSlotId: '', date: '' }));
+    setAvailableSlots([]);
+    setAvailableDates([]);
+    if (!unitId) { setUnitProfessionals([]); return; }
+    try {
+      const res = await api.get('/schedule-slots', { params: { unitId } });
+      const profMap = new Map();
+      res.data.forEach(s => { if (s.professional) profMap.set(s.professional.id, s.professional); });
+      setUnitProfessionals([...profMap.values()]);
+    } catch { setUnitProfessionals([]); }
+  };
+
+  const handleProfessionalChangeInForm = async (professionalId) => {
+    setForm(f => ({ ...f, professionalId, scheduleSlotId: '', date: '' }));
+    setAvailableSlots([]);
+    if (!professionalId) { setAvailableDates([]); return; }
+    try {
+      const res = await api.get('/schedule-slots/available-dates', { params: { unitId: form.unitId, professionalId } });
+      setAvailableDates(res.data);
+    } catch { setAvailableDates([]); }
   };
 
   const handleSlotSelect = (slot) => {
-    setForm(f => ({ ...f, scheduleSlotId: slot.id, professionalId: slot.professional?.id || '' }));
+    setForm(f => ({
+      ...f,
+      scheduleSlotId: slot.id,
+      professionalId: slot.professional?.id || '',
+      time: slot.startTime || f.time,
+    }));
+  };
+
+  const handleTimeSelect = (slot, time) => {
+    setForm(f => ({ ...f, scheduleSlotId: slot.id, professionalId: slot.professional?.id || '', time }));
   };
 
   const handleSave = async () => {
-    if (!form.patientId || !form.date || !form.time || !form.unitId) {
+    if (!form.patientId || !form.date || !form.time || !form.unitId || !form.professionalId) {
       toast.warning('Preencha os campos obrigatorios');
       return;
     }
@@ -226,44 +280,99 @@ export default function Agendamentos() {
       </div>
 
       {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+        <div className="modal-overlay">
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>{editItem ? 'Editar Agendamento' : 'Novo Agendamento'}</h3>
               <button className="modal-close" onClick={() => setShowForm(false)}>&times;</button>
             </div>
             <div className="modal-body">
-              <div className="form-grid">
-                <div className="form-group required">
-                  <label>Data</label>
-                  <input type="date" value={form.date} onChange={e => handleDateChangeInForm(e.target.value)} />
+              <div className="form-grid compact">
+                <div className="form-group required full-width">
+                  <label>Paciente</label>
+                  <PatientAutocomplete
+                    patients={patients}
+                    value={patients.find(p => p.id === form.patientId) || null}
+                    onSelect={p => setForm(f => ({ ...f, patientId: p.id }))}
+                    onClear={() => setForm(f => ({ ...f, patientId: '' }))}
+                  />
                 </div>
-                <div className="form-group required">
-                  <label>Unidade de Atendimento</label>
+                <div className="form-group required full-width">
+                  <label>1. Unidade de Atendimento</label>
                   <select value={form.unitId} onChange={e => handleUnitChangeInForm(e.target.value)}>
                     <option value="">Selecione...</option>
                     {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                   </select>
                 </div>
-                <div className="form-group required">
-                  <label>Paciente</label>
-                  <select value={form.patientId} onChange={e => setForm({ ...form, patientId: e.target.value })}>
-                    <option value="">Selecione...</option>
-                    {patients.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                <div className="form-group required full-width">
+                  <label>2. Profissional</label>
+                  <select value={form.professionalId} onChange={e => handleProfessionalChangeInForm(e.target.value)} disabled={!form.unitId}>
+                    <option value="">{form.unitId ? 'Selecione...' : 'Selecione a unidade primeiro'}</option>
+                    {unitProfessionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
+                </div>
+                <div className="form-group required full-width">
+                  <label>3. Data (somente datas com vagas)</label>
+                  {!form.professionalId ? (
+                    <div style={{ padding: '12px 14px', fontSize: 13, color: 'var(--text-muted)', background: '#f9fafb', borderRadius: 'var(--radius-sm)', border: '1.5px dashed var(--border)' }}>
+                      Selecione o profissional primeiro
+                    </div>
+                  ) : availableDates.length === 0 ? (
+                    <div style={{ padding: '12px 14px', fontSize: 13, color: 'var(--text-muted)', background: '#f9fafb', borderRadius: 'var(--radius-sm)', border: '1.5px dashed var(--border)' }}>
+                      Nenhuma data com vagas disponíveis para este profissional
+                    </div>
+                  ) : (
+                    <DateCalendar dates={availableDates} value={form.date} onSelect={handleDateChangeInForm} />
+                  )}
                 </div>
               </div>
 
-              {form.date && form.unitId && (
+              {form.date && (
                 <div style={{ marginTop: 12 }}>
                   <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 8 }}>Horários Disponíveis</label>
                   {availableSlots.length === 0 ? (
                     <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, border: '1.5px dashed var(--border)', borderRadius: 'var(--radius-sm)' }}>
-                      Nenhum horário disponível para esta unidade e data. Cadastre horários na aba Horários.
+                      Nenhum horário disponível para esta unidade, profissional e data. Cadastre horários na aba Horários.
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {availableSlots.map(s => (
+                      {availableSlots.map(s => s.slotType === 'TEMPO' ? (
+                        <div key={s.id}
+                          style={{
+                            padding: '10px 12px', borderRadius: 'var(--radius-sm)',
+                            border: `1.5px solid ${form.scheduleSlotId == s.id ? 'var(--primary)' : 'var(--border)'}`,
+                            background: form.scheduleSlotId == s.id ? 'var(--primary-light, #e0f0ff)' : 'white',
+                            display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13,
+                          }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <span style={{ fontWeight: 600 }}>{s.startTime} - {s.endTime}</span>
+                              <span style={{ marginLeft: 8, color: 'var(--text-muted)' }}>Dr(a). {s.professional?.name}</span>
+                            </div>
+                            <span className="badge badge-info" style={{ fontSize: 11 }}>{s.durationMinutes} min/consulta</span>
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {(s.availableTimes || []).map(t => {
+                              const selected = form.scheduleSlotId == s.id && form.time === t;
+                              return (
+                                <button key={t} type="button" onClick={() => handleTimeSelect(s, t)}
+                                  style={{
+                                    padding: '6px 12px', borderRadius: 'var(--radius-sm)', fontSize: 13,
+                                    border: `1.5px solid ${selected ? 'var(--primary)' : 'var(--border)'}`,
+                                    background: selected ? 'var(--primary)' : 'white',
+                                    color: selected ? 'white' : 'inherit',
+                                    cursor: 'pointer',
+                                  }}>
+                                  {t}
+                                </button>
+                              );
+                            })}
+                            {(s.availableTimes || []).length === 0 && (
+                              <span style={{ color: 'var(--danger)', fontSize: 13 }}>Sem horários livres nesta data</span>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
                         <div key={s.id}
                           onClick={() => s.remaining > 0 && handleSlotSelect(s)}
                           style={{
@@ -289,11 +398,13 @@ export default function Agendamentos() {
               )}
 
               {selectedSlot && (
-                <div className="form-grid" style={{ marginTop: 12 }}>
+                <div className="form-grid compact" style={{ marginTop: 12 }}>
                   <div className="form-group required">
-                    <label>Horário</label>
-                    <input type="time" value={form.time} onChange={e => setForm({ ...form, time: e.target.value })}
-                      min={selectedSlot.startTime} max={selectedSlot.endTime} />
+                    <label>{selectedSlot.slotType === 'TEMPO' ? 'Horário da consulta' : 'Agenda'}</label>
+                    <input type="text"
+                      value={selectedSlot.slotType === 'TEMPO' ? form.time : `${selectedSlot.startTime} - ${selectedSlot.endTime}`}
+                      disabled
+                      style={{ background: '#f5f5f5', color: 'var(--text-secondary)', fontWeight: 600 }} />
                   </div>
                   <div className="form-group">
                     <label>Tipo</label>

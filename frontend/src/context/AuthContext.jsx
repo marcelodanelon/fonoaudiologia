@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import api from '../api/axios';
 
 const AuthContext = createContext(null);
@@ -38,7 +38,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(!!stored.token);
   const [sessionTimeoutMinutes, setSessionTimeoutMinutes] = useState(stored.timeoutMinutes);
 
-  const [lastActivity, setLastActivity] = useState(stored.lastActivity || Date.now());
+  const lastActivityRef = useRef(stored.lastActivity || Date.now());
   const [showWarning, setShowWarning] = useState(false);
 
   useEffect(() => {
@@ -64,7 +64,7 @@ export function AuthProvider({ children }) {
     setToken(data.token);
     setUser(data);
     setSessionTimeoutMinutes(data.sessionTimeoutMinutes);
-    setLastActivity(Date.now());
+    lastActivityRef.current = Date.now();
     setShowWarning(false);
   };
 
@@ -81,7 +81,7 @@ export function AuthProvider({ children }) {
 
     const timeoutMs = sessionTimeoutMinutes * 60 * 1000;
     const warningMs = timeoutMs - 60000;
-    const elapsed = Date.now() - lastActivity;
+    const elapsed = Date.now() - lastActivityRef.current;
 
     if (elapsed >= timeoutMs) {
       (async () => {
@@ -91,8 +91,8 @@ export function AuthProvider({ children }) {
           localStorage.setItem('token', newToken);
           const now = Date.now();
           localStorage.setItem('lastActivity', now);
+          lastActivityRef.current = now;
           setToken(newToken);
-          setLastActivity(now);
           setShowWarning(false);
         } catch {
           logout();
@@ -101,7 +101,7 @@ export function AuthProvider({ children }) {
     } else if (elapsed >= warningMs) {
       setShowWarning(true);
     }
-  }, [token, lastActivity, sessionTimeoutMinutes, logout]);
+  }, [token, sessionTimeoutMinutes, logout]);
 
   useEffect(() => {
     if (!token) return;
@@ -115,7 +115,7 @@ export function AuthProvider({ children }) {
     const handleActivity = () => {
       const now = Date.now();
       localStorage.setItem('lastActivity', now);
-      setLastActivity(now);
+      lastActivityRef.current = now;
       setShowWarning(false);
     };
 
@@ -127,7 +127,7 @@ export function AuthProvider({ children }) {
   const extendSession = () => {
     const now = Date.now();
     localStorage.setItem('lastActivity', now);
-    setLastActivity(now);
+    lastActivityRef.current = now;
     setShowWarning(false);
   };
 

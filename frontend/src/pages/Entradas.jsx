@@ -164,14 +164,14 @@ export default function Entradas() {
       </div>
 
       {entryFormOpen && (
-        <div className="modal-overlay" onClick={() => setEntryFormOpen(false)}>
+        <div className="modal-overlay">
           <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>{editingEntry ? 'Editar Entrada de Insumos' : 'Nova Entrada de Insumos'}</h3>
               <button className="modal-close" onClick={() => setEntryFormOpen(false)}>&times;</button>
             </div>
             <div className="modal-body">
-              <div className="form-grid">
+              <div className="form-grid compact">
                 <div className="form-group required">
                   <label>Unidade de Atendimento</label>
                   <select value={entryForm.unitId} disabled={Boolean(editingEntry)} onChange={e => setEntryForm({ ...entryForm, unitId: e.target.value })}>

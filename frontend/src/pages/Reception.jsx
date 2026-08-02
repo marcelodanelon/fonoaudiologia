@@ -1,11 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import Pagination from '../components/Pagination';
+import PatientAutocomplete from '../components/PatientAutocomplete';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { statusLabel } from '../utils/statusLabels';
 
 const PAGE_SIZE = 12;
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '-';
+  const [y, m, d] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
+};
 
 export default function Reception() {
   const toast = useToast();
@@ -25,7 +32,6 @@ export default function Reception() {
   const [modalNotes, setModalNotes] = useState('');
   const [modalUnit, setModalUnit] = useState('');
   const [modalPatient, setModalPatient] = useState(null);
-  const [modalPatientSearch, setModalPatientSearch] = useState('');
   const [filterSearch, setFilterSearch] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterContact, setFilterContact] = useState('');
@@ -63,18 +69,11 @@ export default function Reception() {
     } catch { toast.error('Erro ao carregar registros'); }
   };
 
-  const modalSearchResults = patients.filter(p => {
-    const s = modalPatientSearch.toLowerCase();
-    return (p.name?.toLowerCase().includes(s) || p.cpf?.includes(modalPatientSearch) || p.phone?.includes(modalPatientSearch))
-      && modalPatientSearch.length > 0;
-  });
-
   const openRegisterModal = () => {
     setModalType('CHECKIN');
     setModalNotes('');
     setModalUnit(selectedUnit);
     setModalPatient(null);
-    setModalPatientSearch('');
     setShowRegisterModal(true);
   };
 
@@ -100,6 +99,7 @@ export default function Reception() {
     try {
       const unitId = selectedUnit || apt.unit?.id;
       await api.post('/reception', {
+        appointmentId: apt.id,
         patientId: apt.patient?.id,
         unitId: Number(unitId),
         type: 'CHECKIN', contactType: 'AGENDAMENTO',
@@ -119,7 +119,6 @@ export default function Reception() {
       loadPatients();
       if (created.data) {
         setModalPatient(created.data);
-        setModalPatientSearch(created.data.name || '');
       }
     } catch (err) { toast.error(err.response?.data?.message || 'Erro ao cadastrar'); }
   };
@@ -156,7 +155,11 @@ export default function Reception() {
             <option value="">Selecione a Unidade...</option>
             {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
-          <button className="btn btn-primary" onClick={loadRecords} disabled={!selectedUnit || !selectedDate}>
+          <button className="btn btn-primary" onClick={() => {
+            if (!selectedUnit) { toast.warning('Selecione a unidade de atendimento primeiro'); return; }
+            if (!selectedDate) { toast.warning('Selecione a data'); return; }
+            loadRecords();
+          }}>
             Carregar
           </button>
           <div style={{ flex: 1 }}>
@@ -259,7 +262,7 @@ export default function Reception() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <h3 style={{ margin: 0 }}>Agendamentos do Dia</h3>
               <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                {selectedDate}
+                {formatDate(selectedDate)}
               </span>
               <button className="btn btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={loadRecords}>
                 Atualizar
@@ -289,7 +292,7 @@ export default function Reception() {
       </div>
 
       {showRegisterModal && (
-        <div className="modal-overlay" onClick={() => setShowRegisterModal(false)}>
+        <div className="modal-overlay">
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Novo Registro</h2>
@@ -298,36 +301,13 @@ export default function Reception() {
             <div className="modal-body">
               <div className="form-group required">
                 <label>Paciente</label>
-                <input placeholder="Buscar paciente por nome, CPF ou telefone..." value={modalPatientSearch}
-                  onChange={e => { setModalPatientSearch(e.target.value); if (e.target.value === '') setModalPatient(null); }} />
-                {modalPatientSearch && !modalPatient && modalSearchResults.length > 0 && (
-                  <div className="scroll-container" style={{ maxHeight: 120, marginTop: 6, marginBottom: 4 }}>
-                    <table>
-                      <thead><tr><th>Nome</th><th>CPF</th><th></th></tr></thead>
-                      <tbody>
-                        {modalSearchResults.slice(0, 5).map(p => (
-                          <tr key={p.id} style={{ cursor: 'pointer' }}
-                            onClick={() => { setModalPatient(p); setModalPatientSearch(p.name); }}>
-                            <td>{p.name}</td><td>{p.cpf}</td>
-                            <td><button className="btn btn-primary btn-sm" style={{ padding: '3px 8px', fontSize: 11 }}
-                              onClick={(e) => { e.stopPropagation(); setModalPatient(p); setModalPatientSearch(p.name); }}>Selecionar</button></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-                {modalPatient && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 6, padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 'var(--radius-sm)' }}>
-                    <div style={{ flex: 1 }}>
-                      <strong>{modalPatient.name}</strong>
-                      <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 10 }}>CPF: {modalPatient.cpf}</span>
-                      <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 10 }}>Tel: {modalPatient.phone}</span>
-                    </div>
-                    <button className="btn btn-sm" style={{ padding: '2px 6px', fontSize: 11 }}
-                      onClick={() => { setModalPatient(null); setModalPatientSearch(''); }}>x</button>
-                  </div>
-                )}
+                <PatientAutocomplete
+                  patients={patients}
+                  value={modalPatient}
+                  onSelect={p => setModalPatient(p)}
+                  onClear={() => setModalPatient(null)}
+                  placeholder="Buscar paciente por nome, CPF ou telefone..."
+                />
                 <div style={{ marginTop: 6 }}>
                   <button className="btn btn-secondary btn-sm" onClick={() => setShowNewPatient(true)}>+ Novo Paciente</button>
                 </div>
@@ -365,14 +345,14 @@ export default function Reception() {
       )}
 
       {showNewPatient && (
-        <div className="modal-overlay" onClick={() => setShowNewPatient(false)}>
+        <div className="modal-overlay">
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Novo Paciente</h2>
               <button className="modal-close" onClick={() => setShowNewPatient(false)}>&times;</button>
             </div>
             <div className="modal-body">
-              <div className="form-grid">
+              <div className="form-grid compact">
                 <div className="form-group full-width"><label>Nome Completo</label>
                   <input value={newPatient.name} onChange={e => setNewPatient({...newPatient, name: e.target.value})} /></div>
                 <div className="form-group"><label>CPF</label>

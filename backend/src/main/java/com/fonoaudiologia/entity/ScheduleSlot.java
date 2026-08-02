@@ -39,6 +39,11 @@ public class ScheduleSlot {
     private int capacity = 1;
 
     @Column(nullable = false)
+    private String slotType = "QUANTIDADE"; // QUANTIDADE ou TEMPO
+
+    private Integer durationMinutes;
+
+    @Column(nullable = false)
     private boolean active = true;
 
     @Column(nullable = false, updatable = false)
@@ -64,6 +69,10 @@ public class ScheduleSlot {
     public void setEndTime(String endTime) { this.endTime = endTime; }
     public int getCapacity() { return capacity; }
     public void setCapacity(int capacity) { this.capacity = capacity; }
+    public String getSlotType() { return slotType; }
+    public void setSlotType(String slotType) { this.slotType = slotType; }
+    public Integer getDurationMinutes() { return durationMinutes; }
+    public void setDurationMinutes(Integer durationMinutes) { this.durationMinutes = durationMinutes; }
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
     public LocalDateTime getCreatedAt() { return createdAt; }

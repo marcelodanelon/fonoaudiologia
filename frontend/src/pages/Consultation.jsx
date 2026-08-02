@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -6,6 +6,7 @@ import { useConfirm } from '../context/ConfirmContext';
 import Pagination from '../components/Pagination';
 import AudiogramChart from '../components/AudiogramChart';
 import PrintModal from '../components/PrintModal';
+import PatientAutocomplete from '../components/PatientAutocomplete';
 import { statusLabel } from '../utils/statusLabels';
 
 const PAGE_SIZE = 10;
@@ -43,6 +44,7 @@ export default function Consultation() {
   const [showPostSaveModal, setShowPostSaveModal] = useState(false);
   const [savedConsultationId, setSavedConsultationId] = useState(null);
   const [printModalHtml, setPrintModalHtml] = useState(null);
+  const readySignatureRef = useRef('');
 
   const [form, setForm] = useState({
     patientId: '', professionalId: '', unitId: '', type: 'CONSULTA', status: 'AGENDADA',
@@ -67,6 +69,7 @@ export default function Consultation() {
     setConsultPage(0);
     setLoaded(false);
     setLastRefresh(null);
+    readySignatureRef.current = '';
   }, [selectedDate, selectedUnit]);
 
   useEffect(() => {
@@ -90,20 +93,34 @@ export default function Consultation() {
   }, [view, isReadonly]);
 
   useEffect(() => {
-    let intervalId;
+    let intervalId = null;
+    let disposed = false;
+    const clearCurrent = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
     const startPolling = async () => {
       try {
         const res = await api.get('/config');
+        if (disposed) return;
         const pollConfig = res.data.find(c => c.configKey === 'reception_poll_interval');
         const interval = parseInt(pollConfig?.configValue, 10) || 10000;
+        clearCurrent();
         loadReadyPatients();
         intervalId = setInterval(loadReadyPatients, interval);
       } catch {
+        if (disposed) return;
+        clearCurrent();
         intervalId = setInterval(loadReadyPatients, 10000);
       }
     };
     startPolling();
-    return () => { if (intervalId) clearInterval(intervalId); };
+    return () => {
+      disposed = true;
+      clearCurrent();
+    };
   }, [selectedUnit, selectedDate]);
 
   const loadData = async () => {
@@ -134,11 +151,12 @@ export default function Consultation() {
         readyParams.unitId = selectedUnit;
         aptParams.unitId = selectedUnit;
       }
-      const [readyRes, aptRes] = await Promise.all([
+      const [readyRes, aptRes] = await Promise.allSettled([
         api.get('/reception/ready', { params: readyParams }),
-        api.get('/appointments/scheduled/' + selectedDate, { params: aptParams }).catch(() => ({ data: [] })),
+        api.get('/appointments/scheduled/' + selectedDate, { params: aptParams }),
       ]);
-      const mappedApts = aptRes.data.map(a => ({
+      if (readyRes.status !== 'fulfilled' || aptRes.status !== 'fulfilled') return;
+      const mappedApts = aptRes.value.data.map(a => ({
         id: 'apt-' + a.id,
         type: 'APPOINTMENT',
         status: a.status,
@@ -149,14 +167,31 @@ export default function Consultation() {
         time: a.time,
         unit: a.unit,
       }));
-      setReadyPatients([...readyRes.data, ...mappedApts]);
-      setLastRefresh(new Date());
-    } catch { setReadyPatients([]); }
+      const deduped = [...readyRes.value.data, ...mappedApts].reduce((acc, item) => {
+        const pid = item.patient?.id;
+        if (pid == null) return acc;
+        const existing = acc.find(x => x.patient?.id === pid);
+        if (!existing || item.type === 'APPOINTMENT') {
+          const rest = existing ? acc.filter(x => x !== existing) : acc;
+          return [...rest, item];
+        }
+        return acc;
+      }, []);
+      const normalized = deduped
+        .slice()
+        .sort((a, b) => (a.patient?.id || 0) - (b.patient?.id || 0) || String(a.id).localeCompare(String(b.id)));
+      const signature = normalized.map(x => `${x.id}:${x.status}`).join('|');
+      if (readySignatureRef.current !== signature) {
+        readySignatureRef.current = signature;
+        setReadyPatients(normalized);
+        setLastRefresh(new Date());
+      }
+    } catch { /* mantém a última lista conhecida para evitar flicker */ }
   };
 
   const resetForm = () => {
     setForm({
-      patientId: '', professionalId: '', unitId: selectedUnit || '', type: 'CONSULTA', status: 'AGENDADA',
+      patientId: '', professionalId: '', unitId: selectedUnit || '', type: 'CONSULTA', status: 'EM_ANDAMENTO',
       chiefComplaint: '', anamnesis: '', clinicalHistory: '', physicalExam: '',
       diagnosis: '', conduct: '', observations: '',
     });
@@ -184,7 +219,10 @@ export default function Consultation() {
       chiefComplaint: '', anamnesis: '', clinicalHistory: '', physicalExam: '',
       diagnosis: '', conduct: '', observations: '',
     });
-    setEditingConsultation({ receptionRecordId: record.type === 'APPOINTMENT' ? null : record.id });
+    setEditingConsultation({
+      receptionRecordId: record.type === 'APPOINTMENT' ? null : record.id,
+      appointmentId: record.type === 'APPOINTMENT' ? record.appointmentId : null,
+    });
     setSelectedConsultation(null);
     setExistingAudiogram(null);
     setAudiogramData({ ...emptyAudiogram });
@@ -258,9 +296,12 @@ export default function Consultation() {
       return;
     }
     try {
-      const payload = { ...form, status: 'CONCLUIDA' };
+      const payload = { ...form, status: 'CONCLUIDA', date: selectedDate };
       if (editingConsultation?.receptionRecordId && !editingConsultation?.id) {
         payload.receptionRecordId = editingConsultation.receptionRecordId;
+      }
+      if (editingConsultation?.appointmentId && !editingConsultation?.id) {
+        payload.appointmentId = editingConsultation.appointmentId;
       }
       let consultationId = editingConsultation?.id;
       if (consultationId) {
@@ -339,23 +380,25 @@ export default function Consultation() {
           </div>
         </div>
         <div className="form-view">
-          <div className={`form-group required${formErrors.unitId ? ' error' : ''}`} style={{ marginBottom: 14, flexShrink: 0, maxWidth: 320 }}>
-            <label>Unidade de Atendimento</label>
-            <select value={form.unitId} onChange={e => { setForm({...form, unitId: e.target.value}); setFormErrors(prev => ({ ...prev, unitId: undefined })); }}
-              disabled={isReadonly || isLocked}>
-              <option value="">Selecione...</option>
-              {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-            </select>
-            {formErrors.unitId && <span className="form-error">{formErrors.unitId}</span>}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 14, flexShrink: 0 }}>
-            <div className={`form-group required${formErrors.patientId ? ' error' : ''}`} style={{ marginBottom: 0 }}>
-              <label>Paciente</label>
-              <select value={form.patientId} onChange={e => { setForm({...form, patientId: e.target.value}); setFormErrors(prev => ({ ...prev, patientId: undefined })); }}
+          <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1.5fr 1.5fr 0.7fr', gap: 12, marginBottom: 14, flexShrink: 0 }}>
+            <div className={`form-group required${formErrors.unitId ? ' error' : ''}`} style={{ marginBottom: 0 }}>
+              <label>Unidade</label>
+              <select value={form.unitId} onChange={e => { setForm({...form, unitId: e.target.value}); setFormErrors(prev => ({ ...prev, unitId: undefined })); }}
                 disabled={isReadonly || isLocked}>
                 <option value="">Selecione...</option>
-                {patients.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
+              {formErrors.unitId && <span className="form-error">{formErrors.unitId}</span>}
+            </div>
+            <div className={`form-group required${formErrors.patientId ? ' error' : ''}`} style={{ marginBottom: 0 }}>
+              <label>Paciente</label>
+              <PatientAutocomplete
+                patients={patients}
+                value={patients.find(p => p.id === form.patientId) || null}
+                disabled={isReadonly || isLocked}
+                onSelect={p => { setForm({ ...form, patientId: p.id }); setFormErrors(prev => ({ ...prev, patientId: undefined })); }}
+                onClear={() => { setForm({ ...form, patientId: '' }); setFormErrors(prev => ({ ...prev, patientId: undefined })); }}
+              />
               {formErrors.patientId && <span className="form-error">{formErrors.patientId}</span>}
             </div>
             <div className={`form-group required${formErrors.professionalId ? ' error' : ''}`} style={{ marginBottom: 0 }}>
@@ -374,16 +417,6 @@ export default function Consultation() {
                 <option value="CONSULTA">Consulta</option>
                 <option value="RETORNO">Retorno</option>
                 <option value="AVALIACAO">Avaliação</option>
-              </select>
-            </div>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label>Status</label>
-              <select value={form.status} onChange={e => setForm({...form, status: e.target.value})}
-                disabled={isReadonly || isLocked}>
-                <option value="AGENDADA">Agendada</option>
-                <option value="EM_ANDAMENTO">Em Andamento</option>
-                <option value="CONCLUIDA">Concluida</option>
-                <option value="CANCELADA">Cancelada</option>
               </select>
             </div>
           </div>
@@ -493,7 +526,7 @@ export default function Consultation() {
       </div>
 
       {showPostSaveModal && (
-        <div className="modal-overlay" onClick={() => { setShowPostSaveModal(false); setView('list'); setSelectedConsultation(null); }}>
+        <div className="modal-overlay">
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Consulta salva com sucesso!</h3>
@@ -543,7 +576,10 @@ export default function Consultation() {
             <option value="">Selecione a Unidade...</option>
             {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
-          <button className="btn btn-primary" onClick={() => { loadData(); }} disabled={!selectedUnit}>
+          <button className="btn btn-primary" onClick={() => {
+            if (!selectedUnit) { toast.warning('Selecione a unidade de atendimento primeiro'); return; }
+            loadData();
+          }}>
             Carregar
           </button>
           <div style={{ flex: 1 }}>
@@ -633,7 +669,7 @@ export default function Consultation() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <h3 style={{ margin: 0 }}>Pacientes na Recepção</h3>
               <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                Atualizado {lastRefresh.toLocaleTimeString('pt-BR')}
+                Atualizado {lastRefresh ? lastRefresh.toLocaleTimeString('pt-BR') : '...'}
               </span>
               <button className="btn btn-secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={loadReadyPatients}>
                 Atualizar

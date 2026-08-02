@@ -156,14 +156,14 @@ export default function Operators() {
       </div>
 
       {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+        <div className="modal-overlay">
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{editUser ? 'Editar Operador' : 'Novo Operador'}</h2>
               <button className="modal-close" onClick={() => setShowForm(false)}>&times;</button>
             </div>
             <div className="modal-body">
-              <div className="form-grid">
+              <div className="form-grid compact">
                 <div className="form-group">
                   <label>Nome Completo *</label>
                   <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} />

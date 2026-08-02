@@ -23,4 +23,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
 
     @Query("SELECT COUNT(a) FROM Appointment a WHERE a.scheduleSlot.id = :slotId AND a.status <> 'CANCELADO'")
     long countActiveBySlotId(@Param("slotId") Long slotId);
+
+    @Query("SELECT a.time FROM Appointment a WHERE a.scheduleSlot.id = :slotId AND a.date = :date AND a.status <> 'CANCELADO'")
+    List<String> findBookedTimesForSlotOnDate(@Param("slotId") Long slotId, @Param("date") LocalDate date);
 }

@@ -104,14 +104,14 @@ export default function ServiceUnits() {
       </div>
 
       {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+        <div className="modal-overlay">
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>{editUnit ? 'Editar Unidade' : 'Nova Unidade'}</h3>
               <button className="modal-close" onClick={() => setShowForm(false)}>&times;</button>
             </div>
             <div className="modal-body">
-              <div className="form-grid">
+              <div className="form-grid compact">
                 <div className="form-group full-width required">
                   <label>Nome da Unidade</label>
                   <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ex.: Unidade Centro" />

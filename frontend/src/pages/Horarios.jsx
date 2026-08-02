@@ -31,6 +31,8 @@ const emptyForm = {
   startTime: '08:00',
   endTime: '12:00',
   capacity: 1,
+  slotType: 'QUANTIDADE',
+  durationMinutes: '',
 };
 
 export default function Horários() {
@@ -63,7 +65,7 @@ export default function Horários() {
         try {
           const availParams = selectedDate ? { date: selectedDate } : {};
           const avail = await api.get(`/schedule-slots/${s.id}/availability`, { params: availParams });
-          return { ...s, remaining: avail.data.remaining, occupied: avail.data.occupied };
+          return { ...s, remaining: avail.data.remaining, occupied: avail.data.occupied, capacity: avail.data.capacity };
         } catch {
           return { ...s, remaining: s.capacity, occupied: 0 };
         }
@@ -102,6 +104,8 @@ export default function Horários() {
       startTime: slot.startTime || '08:00',
       endTime: slot.endTime || '12:00',
       capacity: slot.capacity || 1,
+      slotType: slot.slotType || 'QUANTIDADE',
+      durationMinutes: slot.durationMinutes || '',
     });
     setShowForm(true);
   };
@@ -109,6 +113,10 @@ export default function Horários() {
   const handleSave = async () => {
     if (!form.professionalId || !form.unitId || !form.startDate || !form.endDate || form.weekdays.length === 0 || !form.startTime || !form.endTime) {
       toast.warning('Preencha todos os campos obrigatorios');
+      return;
+    }
+    if (form.slotType === 'TEMPO' && (!form.durationMinutes || Number(form.durationMinutes) < 1)) {
+      toast.warning('Informe a duração em minutos de cada consulta');
       return;
     }
     try {
@@ -120,7 +128,9 @@ export default function Horários() {
         weekdays: form.weekdays.join(','),
         startTime: form.startTime,
         endTime: form.endTime,
-        capacity: Number(form.capacity),
+        capacity: form.slotType === 'TEMPO' ? 1 : Number(form.capacity),
+        slotType: form.slotType,
+        durationMinutes: form.slotType === 'TEMPO' ? Number(form.durationMinutes) : null,
       };
       if (editItem) {
         await api.put(`/schedule-slots/${editItem.id}`, payload);
@@ -179,7 +189,7 @@ export default function Horários() {
             <div className="scroll-container" style={{ flex: 1 }}>
               <table>
                 <thead>
-                  <tr><th>Unidade</th><th>Profissional</th><th>Período</th><th>Dias</th><th>Horário</th><th>Vagas</th><th>Ações</th></tr>
+                  <tr><th>Unidade</th><th>Profissional</th><th>Período</th><th>Dias</th><th>Horário</th><th>Tipo</th><th>Vagas</th><th>Ações</th></tr>
                 </thead>
                 <tbody>
                   {slots.map(s => (
@@ -189,6 +199,11 @@ export default function Horários() {
                       <td style={{ whiteSpace: 'nowrap' }}>{formatDate(s.startDate)} a {formatDate(s.endDate)}</td>
                       <td style={{ fontSize: 12 }}>{formatWeekdays(s.weekdays)}</td>
                       <td style={{ whiteSpace: 'nowrap', fontWeight: 600 }}>{s.startTime} - {s.endTime}</td>
+                      <td>
+                        {s.slotType === 'TEMPO'
+                          ? <span className="badge badge-info">{s.durationMinutes || '-'} min/consulta</span>
+                          : <span className="badge badge-secondary">Quantidade</span>}
+                      </td>
                       <td>
                         <button className="btn btn-secondary btn-sm" onClick={() => showAvailability(s)}
                           style={{ padding: '2px 8px', fontSize: 12 }}>
@@ -203,7 +218,7 @@ export default function Horários() {
                       </td>
                     </tr>
                   ))}
-                  {slots.length === 0 && <tr><td colSpan={7} className="empty-state" style={{ padding: 40 }}>Nenhum horário para esta data</td></tr>}
+                  {slots.length === 0 && <tr><td colSpan={8} className="empty-state" style={{ padding: 40 }}>Nenhum horário para esta data</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -212,14 +227,14 @@ export default function Horários() {
       </div>
 
       {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+        <div className="modal-overlay">
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>{editItem ? 'Editar Horário' : 'Novo Horário'}</h3>
               <button className="modal-close" onClick={() => setShowForm(false)}>&times;</button>
             </div>
             <div className="modal-body">
-              <div className="form-grid">
+              <div className="form-grid compact">
                 <div className="form-group full-width required">
                   <label>Unidade de Atendimento</label>
                   <select value={form.unitId} onChange={e => setForm({ ...form, unitId: e.target.value })}>
@@ -250,10 +265,28 @@ export default function Horários() {
                   <label>Horário Fim</label>
                   <input type="time" value={form.endTime} onChange={e => setForm({ ...form, endTime: e.target.value })} />
                 </div>
-                <div className="form-group full-width required">
-                  <label>Vagas por Dia (nesse horário)</label>
-                  <input type="number" min="1" value={form.capacity} onChange={e => setForm({ ...form, capacity: Number(e.target.value) })} />
+                <div className="form-group required">
+                  <label>Tipo de Vaga</label>
+                  <select value={form.slotType} onChange={e => setForm({ ...form, slotType: e.target.value })}>
+                    <option value="QUANTIDADE">Por Quantidade</option>
+                    <option value="TEMPO">Por Tempo</option>
+                  </select>
                 </div>
+                {form.slotType === 'TEMPO' ? (
+                  <div className="form-group required">
+                    <label>Duração de cada consulta (minutos)</label>
+                    <input type="number" min="5" step="5" value={form.durationMinutes}
+                      onChange={e => setForm({ ...form, durationMinutes: e.target.value })} placeholder="Ex.: 30" />
+                    <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5, marginTop: 6 }}>
+                      Os horários das vagas serão gerados automaticamente entre o horário de início e fim (ex.: 08:00, 08:30, 09:00...).
+                    </span>
+                  </div>
+                ) : (
+                  <div className="form-group required">
+                    <label>Vagas por Dia (nesse horário)</label>
+                    <input type="number" min="1" value={form.capacity} onChange={e => setForm({ ...form, capacity: Number(e.target.value) })} />
+                  </div>
+                )}
                 <div className="form-group full-width">
                   <label>Dias da Semana</label>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
@@ -277,7 +310,7 @@ export default function Horários() {
       )}
 
       {availModal && (
-        <div className="modal-overlay" onClick={() => setAvailModal(null)}>
+        <div className="modal-overlay">
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Vagas - {selectedDate}</h3>
@@ -287,9 +320,25 @@ export default function Horários() {
               <div style={{ fontSize: 14, marginBottom: 4 }}>{availModal.slot?.professional?.name}</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>{availModal.slot?.unit?.name || ''}</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>{availModal.slot?.startTime} - {availModal.slot?.endTime}</div>
-              <div style={{ fontSize: 48, fontWeight: 700, color: availModal.remaining > 0 ? 'var(--primary)' : 'var(--danger)' }}>{availModal.remaining}</div>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>vagas disponíveis</div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>Total: {availModal.capacity} | Ocupadas: {availModal.occupied}</div>
+              {availModal.slotType === 'TEMPO' ? (
+                <>
+                  <div style={{ fontSize: 48, fontWeight: 700, color: availModal.remaining > 0 ? 'var(--primary)' : 'var(--danger)' }}>{availModal.remaining}</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>horários disponíveis</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginTop: 12, maxWidth: 320, margin: '12px auto 0' }}>
+                    {(availModal.availableTimes || []).map(t => (
+                      <span key={t} style={{ padding: '6px 12px', borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--border)', fontSize: 13, background: 'white' }}>{t}</span>
+                    ))}
+                    {(availModal.availableTimes || []).length === 0 && <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Sem horários livres nesta data</span>}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 12 }}>Total de horários: {availModal.capacity} | Duração: {availModal.durationMinutes} min</div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: 48, fontWeight: 700, color: availModal.remaining > 0 ? 'var(--primary)' : 'var(--danger)' }}>{availModal.remaining}</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>vagas disponíveis</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>Total: {availModal.capacity} | Ocupadas: {availModal.occupied}</div>
+                </>
+              )}
             </div>
             <div className="modal-footer">
               <button className="btn btn-primary" onClick={() => setAvailModal(null)}>Fechar</button>

@@ -15,6 +15,8 @@ public class ConsultationRequest {
     private String conduct;
     private String observations;
     private Long receptionRecordId;
+    private Long appointmentId;
+    private String date;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -44,4 +46,8 @@ public class ConsultationRequest {
     public void setObservations(String observations) { this.observations = observations; }
     public Long getReceptionRecordId() { return receptionRecordId; }
     public void setReceptionRecordId(Long receptionRecordId) { this.receptionRecordId = receptionRecordId; }
+    public Long getAppointmentId() { return appointmentId; }
+    public void setAppointmentId(Long appointmentId) { this.appointmentId = appointmentId; }
+    public String getDate() { return date; }
+    public void setDate(String date) { this.date = date; }
 }

@@ -166,7 +166,7 @@ export default function Insumos() {
       </div>
 
       {supplyFormOpen && (
-        <div className="modal-overlay" onClick={() => setSupplyFormOpen(false)}>
+        <div className="modal-overlay">
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>{editingSupply ? 'Editar Insumo' : 'Novo Insumo'}</h3>
@@ -178,7 +178,7 @@ export default function Insumos() {
             </div>
             <div className="modal-body" style={{ minHeight: 520, maxHeight: 520 }}>
               {supplyTab === 'dados' && (
-                <div className="form-grid">
+                <div className="form-grid compact">
                   <div className="form-group full-width required">
                     <label>Nome</label>
                     <input value={supplyForm.name} onChange={e => setSupplyForm({ ...supplyForm, name: e.target.value })} placeholder="Ex.: Otoscópio descartável" />

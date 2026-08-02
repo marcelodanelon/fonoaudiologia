@@ -30,11 +30,25 @@ public class ScheduleSlotController {
 
     @GetMapping("/date/{date}")
     public ResponseEntity<List<ScheduleSlot>> findByDate(@PathVariable String date,
-                                                          @RequestParam(required = false) Long unitId) {
+                                                          @RequestParam(required = false) Long unitId,
+                                                          @RequestParam(required = false) Long professionalId) {
+        if (unitId != null && professionalId != null) {
+            return ResponseEntity.ok(service.findForUnitAndProfessionalAndDate(unitId, professionalId, LocalDate.parse(date)));
+        }
         if (unitId != null) {
             return ResponseEntity.ok(service.findForUnitAndDate(unitId, LocalDate.parse(date)));
         }
         return ResponseEntity.ok(service.findForDate(LocalDate.parse(date)));
+    }
+
+    @GetMapping("/available-dates")
+    public ResponseEntity<List<LocalDate>> availableDates(@RequestParam(required = false) Long unitId,
+                                                          @RequestParam(required = false) Long professionalId,
+                                                          @RequestParam(required = false) String from,
+                                                          @RequestParam(required = false) String to) {
+        LocalDate start = (from != null && !from.isEmpty()) ? LocalDate.parse(from) : null;
+        LocalDate end = (to != null && !to.isEmpty()) ? LocalDate.parse(to) : null;
+        return ResponseEntity.ok(service.findAvailableDates(unitId, professionalId, start, end));
     }
 
     @GetMapping("/{id}")
@@ -49,21 +63,10 @@ public class ScheduleSlotController {
     @GetMapping("/{id}/availability")
     public ResponseEntity<?> availability(@PathVariable Long id, @RequestParam(required = false) String date) {
         try {
-            ScheduleSlot slot = service.findById(id);
-            int occupied;
-            if (date != null && !date.isEmpty()) {
-                occupied = service.countActiveAppointmentsForSlotOnDate(id, LocalDate.parse(date));
-            } else {
-                occupied = service.countActiveAppointmentsForSlot(id);
-            }
-            int remaining = slot.getCapacity() - occupied;
-            HashMap<String, Object> result = new HashMap<>();
-            result.put("capacity", slot.getCapacity());
-            result.put("occupied", occupied);
-            result.put("remaining", remaining);
-            return ResponseEntity.ok(result);
+            LocalDate parsedDate = (date != null && !date.isEmpty()) ? LocalDate.parse(date) : null;
+            return ResponseEntity.ok(service.getAvailability(id, parsedDate));
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(new java.util.HashMap<String, Object>() {{ put("message", e.getMessage()); }});
+            return ResponseEntity.badRequest().body(new HashMap<String, Object>() {{ put("message", e.getMessage()); }});
         }
     }
 

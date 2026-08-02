@@ -228,14 +228,14 @@ export default function Saídas() {
       </div>
 
       {exitFormOpen && (
-        <div className="modal-overlay" onClick={() => setExitFormOpen(false)}>
+        <div className="modal-overlay">
           <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>{editingExit ? 'Editar Saída de Insumos' : 'Nova Saída de Insumos'}</h3>
               <button className="modal-close" onClick={() => setExitFormOpen(false)}>&times;</button>
             </div>
             <div className="modal-body">
-              <div className="form-grid">
+              <div className="form-grid compact">
                 <div className="form-group required">
                   <label>Unidade de Atendimento</label>
                   <select value={exitForm.unitId} disabled={Boolean(editingExit)} onChange={e => setExitUnit(e.target.value)}>

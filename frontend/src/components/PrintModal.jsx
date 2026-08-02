@@ -22,7 +22,7 @@ export default function PrintModal({ html, onClose }) {
   if (!html) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 200 }}>
+    <div className="modal-overlay" style={{ zIndex: 200 }}>
       <div className="print-modal" onClick={e => e.stopPropagation()}>
         <div className="print-modal-header">
           <h3>Visualização do Documento</h3>

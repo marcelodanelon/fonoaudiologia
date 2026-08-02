@@ -25,15 +25,17 @@ public class AppointmentService {
     private final UserRepository userRepository;
     private final ScheduleSlotRepository scheduleSlotRepository;
     private final ServiceUnitRepository unitRepository;
+    private final ScheduleSlotService scheduleSlotService;
 
     public AppointmentService(AppointmentRepository repository, PatientRepository patientRepository,
                               UserRepository userRepository, ScheduleSlotRepository scheduleSlotRepository,
-                              ServiceUnitRepository unitRepository) {
+                              ServiceUnitRepository unitRepository, ScheduleSlotService scheduleSlotService) {
         this.repository = repository;
         this.patientRepository = patientRepository;
         this.userRepository = userRepository;
         this.scheduleSlotRepository = scheduleSlotRepository;
         this.unitRepository = unitRepository;
+        this.scheduleSlotService = scheduleSlotService;
     }
 
     public List<Appointment> findAll() {
@@ -95,16 +97,29 @@ public class AppointmentService {
                 throw new RuntimeException("O dia selecionado não faz parte dos dias do horário");
             }
 
-            int occupied = 0;
-            List<Appointment> existing = repository.findByScheduleSlotIdAndDate(slot.getId(), aptDate);
-            for (Appointment apt : existing) {
-                if (!"CANCELADO".equals(apt.getStatus())) {
-                    occupied++;
+            if ("TEMPO".equals(slot.getSlotType())) {
+                String time = request.getTime();
+                if (time == null || time.isEmpty()) {
+                    throw new RuntimeException("Selecione o horário da consulta");
                 }
-            }
-
-            if (occupied >= slot.getCapacity()) {
-                throw new RuntimeException("Este horário não possui vagas disponíveis para esta data");
+                if (!scheduleSlotService.generateTimes(slot).contains(time)) {
+                    throw new RuntimeException("Horário inválido para esta agenda");
+                }
+                List<String> booked = repository.findBookedTimesForSlotOnDate(slot.getId(), aptDate);
+                if (booked.contains(time)) {
+                    throw new RuntimeException("Este horário já está ocupado nesta data");
+                }
+            } else {
+                int occupied = 0;
+                List<Appointment> existing = repository.findByScheduleSlotIdAndDate(slot.getId(), aptDate);
+                for (Appointment apt : existing) {
+                    if (!"CANCELADO".equals(apt.getStatus())) {
+                        occupied++;
+                    }
+                }
+                if (occupied >= slot.getCapacity()) {
+                    throw new RuntimeException("Este horário não possui vagas disponíveis para esta data");
+                }
             }
 
             appointment.setScheduleSlot(slot);
@@ -140,6 +155,38 @@ public class AppointmentService {
                     .orElseThrow(() -> new RuntimeException("Horário não encontrado"));
             appointment.setScheduleSlot(slot);
             appointment.setUnit(slot.getUnit());
+
+            LocalDate aptDate = (request.getDate() != null) ? LocalDate.parse(request.getDate()) : appointment.getDate();
+            if (aptDate.isBefore(slot.getStartDate()) || aptDate.isAfter(slot.getEndDate())) {
+                throw new RuntimeException("Data do agendamento fora do período do horário selecionado");
+            }
+            String aptDow = aptDate.getDayOfWeek().toString();
+            if (!slot.getWeekdays().contains(aptDow)) {
+                throw new RuntimeException("O dia selecionado não faz parte dos dias do horário");
+            }
+
+            if ("TEMPO".equals(slot.getSlotType())) {
+                String time = (request.getTime() != null) ? request.getTime() : appointment.getTime();
+                if (time == null || time.isEmpty() || !scheduleSlotService.generateTimes(slot).contains(time)) {
+                    throw new RuntimeException("Selecione um horário válido para esta agenda");
+                }
+                List<String> booked = new java.util.ArrayList<>(repository.findBookedTimesForSlotOnDate(slot.getId(), aptDate));
+                booked.remove(appointment.getTime());
+                if (booked.contains(time)) {
+                    throw new RuntimeException("Este horário já está ocupado nesta data");
+                }
+            } else {
+                int occupied = 0;
+                List<Appointment> existing = repository.findByScheduleSlotIdAndDate(slot.getId(), aptDate);
+                for (Appointment apt : existing) {
+                    if (!"CANCELADO".equals(apt.getStatus()) && !apt.getId().equals(id)) {
+                        occupied++;
+                    }
+                }
+                if (occupied >= slot.getCapacity()) {
+                    throw new RuntimeException("Este horário não possui vagas disponíveis para esta data");
+                }
+            }
         }
         if (request.getUnitId() != null) {
             ServiceUnit unit = unitRepository.findById(request.getUnitId())

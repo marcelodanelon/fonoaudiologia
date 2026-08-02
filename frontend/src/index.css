@@ -805,6 +805,18 @@ tbody tr:last-child td {
   grid-column: 1 / -1;
 }
 
+.form-grid.compact {
+  gap: 10px 16px;
+}
+
+.form-grid.compact .form-group {
+  margin-bottom: 10px;
+}
+
+.modal .form-group {
+  margin-bottom: 10px;
+}
+
 /* ===== SEARCH BAR ===== */
 .search-bar {
   display: flex;
